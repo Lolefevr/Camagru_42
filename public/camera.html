@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camagru - Capture Webcam</title>
+  </head>
+  <body>
+    <h1>Prendre une photo avec votre webcam</h1>
+
+    <video id="video" width="640" height="480" autoplay></video>
+    <button id="capture">Capturer la photo</button>
+    <canvas id="canvas" width="640" height="480"></canvas>
+    <button id="save">Sauvegarder la photo</button>
+
+    <script>
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+      const context = canvas.getContext("2d");
+      const captureButton = document.getElementById("capture");
+      const saveButton = document.getElementById("save");
+
+      // Accéder à la webcam
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((stream) => {
+          video.srcObject = stream;
+        })
+        .catch((err) => {
+          console.error("Erreur lors de l'accès à la webcam:", err);
+        });
+
+      // Capturer l'image et dessiner dans le canvas
+      captureButton.addEventListener("click", () => {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      });
+
+      // Envoyer l'image capturée au serveur
+      saveButton.addEventListener("click", () => {
+        const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en Base64
+
+        // Créer une requête POST pour envoyer l'image
+        fetch("/user/upload", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            image: imageData,
+            userId: 1, // Remplace par l'ID de l'utilisateur connecté
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Image sauvegardée avec succès :", data);
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la sauvegarde de l'image :", error);
+          });
+      });
+    </script>
+  </body>
+</html>
