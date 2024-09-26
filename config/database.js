@@ -1,9 +1,12 @@
 const mysql = require("mysql2");
 require("dotenv").config(); // Charger les variables d'environnement
 
+// Variable pour la connexion à la base de données
+let connection;
+
 // Fonction pour gérer la reconnexion
 function connectToDatabase() {
-  const connection = mysql.createConnection({
+  connection = mysql.createConnection({
     host: process.env.DB_HOST || "db",
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
@@ -27,11 +30,9 @@ function connectToDatabase() {
       throw err;
     }
   });
-
-  return connection;
 }
 
-// Connecter à la base de données
-const db = connectToDatabase();
+// Démarrer la connexion à la base de données
+connectToDatabase();
 
-module.exports = db;
+module.exports = connection;

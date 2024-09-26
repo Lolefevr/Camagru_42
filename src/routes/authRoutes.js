@@ -8,4 +8,7 @@ router.post("/register", authController.register);
 // Route pour la connexion
 router.post("/login", authController.login);
 
+// Route pour l'upload d'images
+router.post("/upload", authController.uploadImage);
+
 module.exports = router;
