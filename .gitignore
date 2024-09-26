@@ -13,10 +13,6 @@ docker-compose.override.yaml
 docker-compose*.log
 *.log
 
-# Dossier des scripts (si tu veux versionner wait-for-it.sh, retire /scripts)
-# Si tu veux garder le script, n'inclut pas /scripts ici
-/scripts/
-
 # Docker volumes (dossier généré automatiquement par Docker)
 db_data/
 
