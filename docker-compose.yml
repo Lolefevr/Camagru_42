@@ -1,0 +1,35 @@
+version: "3"
+
+services:
+  app:
+    build:
+      context: . # Utilise le Dockerfile à la racine du projet
+    container_name: camagru_app
+    working_dir: /app
+    volumes:
+      - .:/app
+      - ./scripts:/scripts
+    ports:
+      - "3000:3000"
+    command: sh -c "/scripts/wait-for-it.sh db && npm run dev"
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - db
+
+  db:
+    image: mariadb:10.5
+    container_name: camagru_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: camagru
+      MYSQL_USER: camagru_user
+      MYSQL_PASSWORD: camagru_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:
