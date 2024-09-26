@@ -7,11 +7,17 @@ RUN apt-get update && apt-get install -y netcat
 # Définir le répertoire de travail dans le conteneur
 WORKDIR /app
 
-# Copier les fichiers dans le conteneur
-COPY . .
+# Copier les fichiers package.json et package-lock.json (si présent) pour installer les dépendances
+COPY package*.json ./
 
 # Installer les dépendances npm
 RUN npm install
+
+# Copier tout le reste des fichiers du projet
+COPY . .
+
+# Exposer le port 3000
+EXPOSE 3000
 
 # Démarrer l'application
 CMD ["npm", "run", "dev"]

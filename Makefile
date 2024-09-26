@@ -2,23 +2,28 @@
 DOCKER_COMPOSE = docker-compose
 
 # Commandes
-.PHONY: build up down restart clean fclean logs
+.PHONY: build up down restart clean fclean logs rebuild
 
-# Build (construit, installe les dépendances npm, et démarre)
+# Build (construit, installe les dépendances npm, et démarre en mode détaché)
 build:
-	$(DOCKER_COMPOSE) up --build
+	$(DOCKER_COMPOSE) up --build -d
 
-# Démarrer les conteneurs (sans rebuild)
+# Démarrer les conteneurs en mode détaché (sans rebuild)
 up:
-	$(DOCKER_COMPOSE) up
+	$(DOCKER_COMPOSE) up -d
 
 # Arrêter les conteneurs
 down:
 	$(DOCKER_COMPOSE) down
 
-# Redémarrer les conteneurs
+# Redémarrer les conteneurs en mode détaché
 restart:
-	$(DOCKER_COMPOSE) down && $(DOCKER_COMPOSE) up
+	$(DOCKER_COMPOSE) down && $(DOCKER_COMPOSE) up -d
+
+# Rebuild (arrêter, reconstruire et redémarrer les conteneurs en mode détaché)
+rebuild:
+	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) up --build -d
 
 # Nettoyer les conteneurs, volumes et images
 clean:
