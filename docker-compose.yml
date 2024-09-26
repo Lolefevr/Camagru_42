@@ -11,7 +11,7 @@ services:
       - ./scripts:/scripts
     ports:
       - "3000:3000"
-    command: sh -c "/scripts/wait-for-it.sh db && npm run dev"
+    command: sh -c "/scripts/wait-for-it.sh db && node src/app.js" # Correction ici
     environment:
       - NODE_ENV=development
     depends_on:
@@ -30,6 +30,7 @@ services:
       - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
+      - ./migrations:/docker-entrypoint-initdb.d # Monte le dossier des migrations dans le conteneur
 
 volumes:
   db_data:
