@@ -4,13 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Camagru - Capture Webcam</title>
+    <style>
+      #canvas {
+        border: 2px solid black;
+      }
+    </style>
   </head>
   <body>
-    <h1>Prendre une photo avec votre webcam</h1>
+    <h1>Prendre une photo avec votre webcam et ajouter un cadre</h1>
 
     <video id="video" width="640" height="480" autoplay></video>
     <button id="capture">Capturer la photo</button>
     <canvas id="canvas" width="640" height="480"></canvas>
+
+    <h3>Choisir un cadre :</h3>
+    <select id="frame-select">
+      <option value="">Aucun cadre</option>
+      <option value="frame1">Cadre 1</option>
+      <option value="frame2">Cadre 2</option>
+      <option value="frame3">Cadre 3</option>
+    </select>
+
     <button id="save">Sauvegarder la photo</button>
 
     <script>
@@ -19,6 +33,7 @@
       const context = canvas.getContext("2d");
       const captureButton = document.getElementById("capture");
       const saveButton = document.getElementById("save");
+      const frameSelect = document.getElementById("frame-select");
 
       // Accéder à la webcam
       navigator.mediaDevices
@@ -33,14 +48,31 @@
       // Capturer l'image et dessiner dans le canvas
       captureButton.addEventListener("click", () => {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const selectedFrame = frameSelect.value;
+
+        // Ajouter un cadre basé sur l'option sélectionnée
+        if (selectedFrame === "frame1") {
+          context.strokeStyle = "red";
+          context.lineWidth = 10;
+          context.strokeRect(0, 0, canvas.width, canvas.height);
+        } else if (selectedFrame === "frame2") {
+          context.strokeStyle = "blue";
+          context.lineWidth = 15;
+          context.strokeRect(0, 0, canvas.width, canvas.height);
+        } else if (selectedFrame === "frame3") {
+          context.strokeStyle = "green";
+          context.lineWidth = 20;
+          context.strokeRect(0, 0, canvas.width, canvas.height);
+        }
       });
 
-      // Envoyer l'image capturée au serveur
+      // Sauvegarder l'image capturée avec le cadre appliqué
       saveButton.addEventListener("click", () => {
+        console.log("saveButton clicked");
         const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en Base64
 
         // Créer une requête POST pour envoyer l'image
-        fetch("/user/upload", {
+        fetch("/auth/upload", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

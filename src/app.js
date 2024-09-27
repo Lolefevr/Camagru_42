@@ -20,6 +20,8 @@ app.use(express.json());
 const authRoutes = require("./routes/authRoutes");
 app.use("/auth", authRoutes);
 
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 // Route basique pour tester si le serveur fonctionne
 app.get("/", (req, res) => {
   res.send("Camagru is running!");

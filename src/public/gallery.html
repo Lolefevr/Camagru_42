@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Galerie d'images</title>
+  </head>
+  <body>
+    <h1>Galerie d'images</h1>
+    <div id="gallery"></div>
+
+    <script>
+      fetch("/auth/images")
+        .then((response) => response.json())
+        .then((data) => {
+          const galleryDiv = document.getElementById("gallery");
+          data.forEach((image) => {
+            const imgContainer = document.createElement("div");
+            const img = document.createElement("img");
+            const likeButton = document.createElement("button");
+
+            img.src = image.image_path;
+            img.width = 200;
+
+            likeButton.textContent = `Like (${image.likes || 0})`; // Affiche le nombre de likes
+            likeButton.addEventListener("click", () => {
+              // Envoyer une requête POST pour liker l'image
+              fetch(`/auth/like/${image.id}`, { method: "POST" })
+                .then((response) => response.json())
+                .then((data) => {
+                  likeButton.textContent = `Like (${data.likes})`; // Met à jour le nombre de likes
+                });
+            });
+
+            imgContainer.appendChild(img);
+            imgContainer.appendChild(likeButton);
+            galleryDiv.appendChild(imgContainer);
+          });
+        })
+        .catch((error) => {
+          console.error("Erreur lors de la récupération des images :", error);
+        });
+    </script>
+  </body>
+</html>

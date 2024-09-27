@@ -3,5 +3,6 @@ CREATE TABLE images (
   user_id INT NOT NULL,
   image_path VARCHAR(255) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  likes INT DEFAULT 0,
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
