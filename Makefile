@@ -36,8 +36,7 @@ fclean:
 	docker volume prune -f
 	docker network prune -f
 	docker image prune -af
-	rm -rf ./uploads/*
-
+	rm -rf ./src/uploads/*
 
 # Afficher les logs
 logs:

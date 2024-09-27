@@ -1,8 +1,8 @@
 # Utiliser l'image Node.js
-FROM node:14
+FROM node:21
 
-# Installer netcat pour que wait-for-it fonctionne
-RUN apt-get update && apt-get install -y netcat
+# Installer apt-utils et netcat pour que wait-for-it fonctionne
+RUN apt-get update && apt-get install -y apt-utils netcat-openbsd
 
 # Définir le répertoire de travail dans le conteneur
 WORKDIR /app

@@ -15,8 +15,22 @@ app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
 
 // Protéger l'accès à la page camera.html (aucun accès direct via /camera.html)
-app.get("/camera", verifyToken, (req, res, next) => {
+app.get("/camera", (req, res, next) => {
+  // besoin de vérifier le token pour la galerie avec verifyToken en argument
   const filePath = path.join(__dirname, "public/camera.html");
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (!res.headersSent) {
+        return next(err); // Propager l'erreur s'il y a un problème
+      }
+    }
+  });
+});
+
+// Protéger l'accès à la page camera.html (aucun accès direct via /camera.html)
+app.get("/gallery", (req, res, next) => {
+  // besoin de vérifier le token pour la galerie avec verifyToken en argument
+  const filePath = path.join(__dirname, "public/gallery.html");
   res.sendFile(filePath, (err) => {
     if (err) {
       if (!res.headersSent) {
@@ -31,6 +45,10 @@ const authRoutes = require("./routes/authRoutes");
 app.use("/auth", authRoutes);
 
 // Route de test du serveur
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Route basique pour tester si le serveur fonctionne
+
 app.get("/", (req, res) => {
   res.send("Camagru is running!");
 });

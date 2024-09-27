@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const db = require("../../config/database");
+const db = require("../../config/database"); // Import de la connexion à la base de données
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -15,6 +15,7 @@ exports.register = (req, res) => {
       return res.status(500).send("Erreur du serveur");
     }
     if (result.length > 0) {
+      console.log("cet email est déjà utilisé");
       return res.status(400).send("Cet email est déjà utilisé.");
     }
 
@@ -90,8 +91,11 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 // Gestion de l'upload d'images (via fichier ou via base64 pour la webcam)
 exports.uploadImage = (req, res) => {
-  const { image } = req.body;
-  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token JWT
+  //   const { image } = req.body;
+  //   const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token JWT
+  console.log(req.body);
+  console.log("debut de fonction uploadImage");
+  const { image, userId } = req.body;
 
   // Vérifie si c'est une image envoyée via la webcam (en Base64)
   if (image.startsWith("data:image/png;base64,")) {
@@ -101,7 +105,10 @@ exports.uploadImage = (req, res) => {
 
     // Sauvegarder l'image sur le serveur
     fs.writeFile(filePath, base64Data, "base64", (err) => {
+      console.log("debut de fonction writeFile");
       if (err) {
+        console.log(err);
+        console.log("Erreur lors de la sauvegarde de l'image 1");
         return res.status(500).send("Erreur lors de la sauvegarde de l'image");
       }
 
@@ -111,6 +118,8 @@ exports.uploadImage = (req, res) => {
         [userId, `/uploads/${filename}`],
         (err, result) => {
           if (err) {
+            console.log(err);
+            console.log("Erreur lors de la sauvegarde de l'image 2");
             return res
               .status(500)
               .send("Erreur du serveur lors de l'enregistrement de l'image");
@@ -122,6 +131,52 @@ exports.uploadImage = (req, res) => {
       );
     });
   } else {
+    console.log(err);
+    console.log("format d'image non supporté");
     return res.status(400).send("Format d'image non supporté.");
   }
+};
+
+// Récupérer les images de tous les utilisateurs
+exports.getImages = (req, res) => {
+  db.query("SELECT * FROM images", (err, results) => {
+    if (err) {
+      console.log(err);
+      console.log("Erreur lors de la récupération des images");
+      return res.status(500).send("Erreur lors de la récupération des images");
+    }
+    res.status(200).json(results);
+  });
+};
+
+// Fonction pour liker une image
+exports.likeImage = (req, res) => {
+  const imageId = req.params.imageId;
+
+  // Incrémenter le compteur de likes pour l'image spécifiée
+  db.query(
+    "UPDATE images SET likes = likes + 1 WHERE id = ?",
+    [imageId],
+    (err, result) => {
+      if (err) {
+        return res.status(500).send("Erreur lors de l'enregistrement du like.");
+      }
+
+      // Récupérer le nouveau nombre de likes
+      db.query(
+        "SELECT likes FROM images WHERE id = ?",
+        [imageId],
+        (err, result) => {
+          if (err) {
+            return res
+              .status(500)
+              .send("Erreur lors de la récupération des likes.");
+          }
+
+          // Envoyer la nouvelle valeur de likes au client
+          res.status(200).json({ likes: result[0].likes });
+        }
+      );
+    }
+  );
 };
