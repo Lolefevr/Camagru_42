@@ -38,7 +38,6 @@ fclean:
 	docker image prune -af
 	rm -rf ./uploads/*
 
-
 # Afficher les logs
 logs:
 	$(DOCKER_COMPOSE) logs -f
