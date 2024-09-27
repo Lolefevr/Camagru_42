@@ -10,7 +10,7 @@ router.post("/register", authController.register);
 router.post("/login", authController.login);
 
 // Route pour l'upload d'images (sécurisée avec JWT)
-router.post("/upload", verifyToken, authController.uploadImage);
+router.post("/upload", authController.uploadImage); // , verifyToken
 
 // Route pour afficher les images
 router.get("/images", authController.getImages);
