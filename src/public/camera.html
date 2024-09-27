@@ -40,7 +40,7 @@
         const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en Base64
 
         // Créer une requête POST pour envoyer l'image
-        fetch("/user/upload", {
+        fetch("/auth/upload", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
