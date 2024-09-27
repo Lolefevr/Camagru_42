@@ -90,7 +90,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 // Gestion de l'upload d'images (via fichier ou via base64 pour la webcam)
 exports.uploadImage = (req, res) => {
-  const { image, userId } = req.body;
+  const { image } = req.body;
+  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token JWT
 
   // Vérifie si c'est une image envoyée via la webcam (en Base64)
   if (image.startsWith("data:image/png;base64,")) {

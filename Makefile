@@ -29,13 +29,15 @@ rebuild:
 clean:
 	$(DOCKER_COMPOSE) down -v --rmi all --remove-orphans
 
-# Supprimer toutes les traces Docker : conteneurs, images, volumes, réseaux
+# Supprimer toutes les traces Docker : conteneurs, images, volumes, réseaux, et contenu du dossier uploads
 fclean:
 	$(DOCKER_COMPOSE) down -v --rmi all --remove-orphans
 	docker system prune -af
 	docker volume prune -f
 	docker network prune -f
 	docker image prune -af
+	rm -rf ./uploads/*
+
 
 # Afficher les logs
 logs:
