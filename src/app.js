@@ -13,6 +13,7 @@ const verifyToken = require("./middleware/authMiddleware");
 // Middleware pour parser les requêtes POST
 app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
+app.use("/frames", express.static(path.join(__dirname, "frames"))); // Calques (frames)
 
 // Protéger l'accès à la page camera.html (aucun accès direct via /camera.html)
 app.get("/camera", (req, res, next) => {

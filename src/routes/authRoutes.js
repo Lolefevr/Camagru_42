@@ -18,4 +18,13 @@ router.get("/images", authController.getImages);
 // Route pour liker une image
 router.post("/like/:imageId", authController.likeImage);
 
+// Route pour ajouter un commentaire
+router.post("/comment/:imageId", authController.addComment);
+
+// Route pour récupérer les commentaires d'une image
+router.get("/comments/:imageId", authController.getComments);
+
+// Nouvelle route pour lister les frames
+router.get("/frames", authController.getFrames);
+
 module.exports = router;
