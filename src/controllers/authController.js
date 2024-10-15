@@ -142,6 +142,26 @@ exports.getImages = (req, res) => {
   });
 };
 
+// Fonction pour lister les fichiers de calques
+exports.getFrames = (req, res) => {
+  const framesDir = path.join(__dirname, "../frames"); // Assure-toi que ce chemin est correct
+
+  // Lire le contenu du dossier
+  fs.readdir(framesDir, (err, files) => {
+    if (err) {
+      console.error(
+        "Erreur lors de la lecture des fichiers dans frames :",
+        err
+      );
+      return res.status(500).send("Erreur lors de la récupération des frames.");
+    }
+
+    // Filtrer uniquement les fichiers PNG
+    const frameFiles = files.filter((file) => file.endsWith(".png"));
+    res.status(200).json(frameFiles); // Retourner la liste des fichiers au format JSON
+  });
+};
+
 // Fonction pour liker une image
 exports.likeImage = (req, res) => {
   const imageId = req.params.imageId;
