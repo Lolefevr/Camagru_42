@@ -102,35 +102,33 @@ exports.uploadImage = (req, res) => {
 
   const base64Data = image.replace(/^data:image\/png;base64,/, "");
   const userImageBuffer = Buffer.from(base64Data, "base64");
-  const filename = Date.now() + ".png";
+  const filename = `${Date.now()}.png`;
   const filePath = path.join(__dirname, "../uploads/", filename);
 
-    // Sauvegarder l'image sur le serveur
-    fs.writeFile(filePath, base64Data, "base64", (err) => {
-      if (err) {
-        console.log("Erreur lors de la sauvegarde de l'image");
-        return res.status(500).send("Erreur lors de la sauvegarde de l'image");
-      }
+  // Sauvegarder l'image sur le serveur
+  fs.writeFile(filePath, userImageBuffer, (err) => {
+    if (err) {
+      console.error("Erreur lors de la sauvegarde de l'image:", err);
+      return res.status(500).send("Erreur lors de la sauvegarde de l'image");
+    }
 
-      // Sauvegarder le chemin de l'image dans la base de données
-      db.query(
-        "INSERT INTO images (user_id, image_path) VALUES (?, ?)",
-        [userId, `/uploads/${filename}`],
-        (err, result) => {
-          if (err) {
-            return res
-              .status(500)
-              .send("Erreur lors de l'enregistrement de l'image.");
-          }
-          res
-            .status(200)
-            .send({ message: "Image sauvegardée avec succès", file: filename });
+    // Sauvegarder le chemin de l'image dans la base de données
+    db.query(
+      "INSERT INTO images (user_id, image_path) VALUES (?, ?)",
+      [userId, `/uploads/${filename}`],
+      (err, result) => {
+        if (err) {
+          console.error("Erreur lors de l'enregistrement de l'image:", err);
+          return res
+            .status(500)
+            .send("Erreur lors de l'enregistrement de l'image.");
         }
-      );
-    });
-  } else {
-    return res.status(400).send("Format d'image non supporté.");
-  }
+        res
+          .status(200)
+          .send({ message: "Image sauvegardée avec succès", file: filename });
+      }
+    );
+  });
 };
 
 // Récupérer les images de tous les utilisateurs
