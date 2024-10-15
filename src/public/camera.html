@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Camagru - Capture Webcam</title>
+    <title>Camagru - Capture Webcam avec Calque</title>
     <style>
       #canvas {
         border: 2px solid black;
@@ -11,18 +11,17 @@
     </style>
   </head>
   <body>
-    <h1>Prendre une photo avec votre webcam et ajouter un cadre</h1>
+    <h1>Prendre une photo avec votre webcam et ajouter un calque</h1>
 
+    <!-- Video webcam -->
     <video id="video" width="640" height="480" autoplay></video>
     <button id="capture">Capturer la photo</button>
     <canvas id="canvas" width="640" height="480"></canvas>
 
-    <h3>Choisir un cadre :</h3>
+    <h3>Choisir un calque :</h3>
     <select id="frame-select">
-      <option value="">Aucun cadre</option>
-      <option value="frame1">Cadre 1</option>
-      <option value="frame2">Cadre 2</option>
-      <option value="frame3">Cadre 3</option>
+      <option value="">Aucun calque</option>
+      <!-- Les calques seront chargés ici -->
     </select>
 
     <button id="save">Sauvegarder la photo</button>
@@ -35,6 +34,22 @@
       const saveButton = document.getElementById("save");
       const frameSelect = document.getElementById("frame-select");
 
+      // Charger dynamiquement les frames depuis le serveur
+      fetch("/auth/frames")
+        .then((response) => response.json())
+        .then((frames) => {
+          // Remplir le dropdown avec les frames disponibles
+          frames.forEach((frame) => {
+            const option = document.createElement("option");
+            option.value = frame;
+            option.textContent = frame.replace(".png", ""); // Afficher sans l'extension
+            frameSelect.appendChild(option);
+          });
+        })
+        .catch((err) =>
+          console.error("Erreur lors du chargement des frames :", err)
+        );
+
       // Accéder à la webcam
       navigator.mediaDevices
         .getUserMedia({ video: true })
@@ -45,28 +60,23 @@
           console.error("Erreur lors de l'accès à la webcam:", err);
         });
 
-      // Capturer l'image et dessiner dans le canvas
+      // Capturer l'image via la webcam et dessiner dans le canvas
       captureButton.addEventListener("click", () => {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const selectedFrame = frameSelect.value;
 
-        // Ajouter un cadre basé sur l'option sélectionnée
-        if (selectedFrame === "frame1") {
-          context.strokeStyle = "red";
-          context.lineWidth = 10;
-          context.strokeRect(0, 0, canvas.width, canvas.height);
-        } else if (selectedFrame === "frame2") {
-          context.strokeStyle = "blue";
-          context.lineWidth = 15;
-          context.strokeRect(0, 0, canvas.width, canvas.height);
-        } else if (selectedFrame === "frame3") {
-          context.strokeStyle = "green";
-          context.lineWidth = 20;
-          context.strokeRect(0, 0, canvas.width, canvas.height);
+        const selectedFrame = frameSelect.value;
+        if (selectedFrame) {
+          // Charger l'image du calque sélectionné
+          const frameImage = new Image();
+          frameImage.src = `/frames/${selectedFrame}`; // Chemin de l'image de calque
+          frameImage.onload = () => {
+            // Dessiner le calque sur le canvas par-dessus la photo
+            context.drawImage(frameImage, 0, 0, canvas.width, canvas.height);
+          };
         }
       });
 
-      // Sauvegarder l'image capturée avec le cadre appliqué
+      // Sauvegarder l'image avec le calque appliqué
       saveButton.addEventListener("click", () => {
         const token = localStorage.getItem("token"); // Récupérer le token depuis le localStorage
         const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en image Base64
