@@ -14,6 +14,7 @@ const verifyToken = require("./middleware/authMiddleware");
 app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/frames", express.static(path.join(__dirname, "frames"))); // Calques (frames)
+app.use(express.static(path.join(__dirname, "public")));
 
 // Protéger l'accès à la page camera.html (aucun accès direct via /camera.html)
 app.get("/camera", (req, res, next) => {
@@ -50,8 +51,10 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Route basique pour tester si le serveur fonctionne
 
+// Route par défaut pour afficher la page d'authentification (register et login)
 app.get("/", (req, res) => {
-  res.send("Camagru is running!");
+  const filePath = path.join(__dirname, "public/auth.html");
+  res.sendFile(filePath);
 });
 
 // Route de test de la base de données

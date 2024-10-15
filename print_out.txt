@@ -14,7 +14,7 @@ const verifyToken = (req, res, next) => {
 };
 
 module.exports = verifyToken;
--e 
+-e
 
 ==== ./src/public/camera.html ====
 <!DOCTYPE html>
@@ -112,7 +112,7 @@ module.exports = verifyToken;
     </script>
   </body>
 </html>
--e 
+-e
 
 ==== ./src/public/gallery.html ====
 <!DOCTYPE html>
@@ -219,7 +219,7 @@ module.exports = verifyToken;
     </script>
   </body>
 </html>
--e 
+-e
 
 ==== ./src/routes/authRoutes.js ====
 const express = require("express");
@@ -249,7 +249,7 @@ router.post("/comment/:imageId", authController.addComment);
 router.get("/comments/:imageId", authController.getComments);
 
 module.exports = router;
--e 
+-e
 
 ==== ./src/app.js ====
 const express = require("express");
@@ -330,7 +330,7 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
--e 
+-e
 
 ==== ./src/controllers/authController.js ====
 const bcrypt = require("bcrypt");
@@ -558,7 +558,7 @@ exports.getComments = (req, res) => {
     }
   );
 };
--e 
+-e
 
 ==== ./src/models/User.js ====
 const db = require("../../config/database");
@@ -607,5 +607,5 @@ module.exports = {
   createUser,
   comparePassword,
 };
--e 
+-e
 

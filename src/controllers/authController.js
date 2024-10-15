@@ -91,8 +91,9 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 // Gestion de l'upload d'images (via fichier ou via base64 pour la webcam)
-exports.uploadImage = async (req, res) => {
-  const { image, frame, userId } = req.body;
+exports.uploadImage = (req, res) => {
+  const { image } = req.body;
+  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token JWT
 
   // Vérifier si c'est une image envoyée via la webcam (Base64)
   if (!image.startsWith("data:image/png;base64,")) {
@@ -104,22 +105,14 @@ exports.uploadImage = async (req, res) => {
   const filename = Date.now() + ".png";
   const filePath = path.join(__dirname, "../uploads/", filename);
 
-  try {
-    // Enregistrer temporairement l'image de l'utilisateur
-    fs.writeFileSync(filePath, userImageBuffer);
+    // Sauvegarder l'image sur le serveur
+    fs.writeFile(filePath, base64Data, "base64", (err) => {
+      if (err) {
+        console.log("Erreur lors de la sauvegarde de l'image");
+        return res.status(500).send("Erreur lors de la sauvegarde de l'image");
+      }
 
-    if (frame) {
-      const framePath = path.join(__dirname, "../frames/", `${frame}.png`);
-
-      // Charger l'image de l'utilisateur et le cadre
-      const finalImage = await sharp(userImageBuffer)
-        .composite([{ input: framePath, gravity: "center" }]) // Superposition du cadre
-        .toBuffer();
-
-      // Sauvegarder l'image finale
-      fs.writeFileSync(filePath, finalImage);
-
-      // Enregistrer le chemin dans la base de données
+      // Sauvegarder le chemin de l'image dans la base de données
       db.query(
         "INSERT INTO images (user_id, image_path) VALUES (?, ?)",
         [userId, `/uploads/${filename}`],
@@ -134,36 +127,10 @@ exports.uploadImage = async (req, res) => {
             .send({ message: "Image sauvegardée avec succès", file: filename });
         }
       );
-    } else {
-      // Si aucun cadre n'est sélectionné, on sauvegarde seulement l'image utilisateur
-      res
-        .status(200)
-        .send({ message: "Image sauvegardée sans cadre", file: filename });
-    }
-  } catch (err) {
-    console.error("Erreur lors de la création du montage :", err);
-    res.status(500).send("Erreur lors du traitement de l'image");
+    });
+  } else {
+    return res.status(400).send("Format d'image non supporté.");
   }
-};
-
-// Fonction pour lister les fichiers de calques
-exports.getFrames = (req, res) => {
-  const framesDir = path.join(__dirname, "../frames"); // Assure-toi que ce chemin est correct
-
-  // Lire le contenu du dossier
-  fs.readdir(framesDir, (err, files) => {
-    if (err) {
-      console.error(
-        "Erreur lors de la lecture des fichiers dans frames :",
-        err
-      );
-      return res.status(500).send("Erreur lors de la récupération des frames.");
-    }
-
-    // Filtrer uniquement les fichiers PNG
-    const frameFiles = files.filter((file) => file.endsWith(".png"));
-    res.status(200).json(frameFiles); // Retourner la liste des fichiers au format JSON
-  });
 };
 
 // Récupérer les images de tous les utilisateurs
