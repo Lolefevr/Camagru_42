@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camagru - Authentification</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+      <h1 class="text-2xl font-bold text-center text-gray-800 mb-8">
+        Bienvenue sur Camagru
+      </h1>
+
+      <!-- Formulaire d'inscription -->
+      <div class="mb-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Inscription</h2>
+        <form id="registerForm" class="space-y-4">
+          <div>
+            <label
+              for="registerEmail"
+              class="block text-sm font-medium text-gray-700"
+              >Email</label
+            >
+            <input
+              type="email"
+              id="registerEmail"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="registerUsername"
+              class="block text-sm font-medium text-gray-700"
+              >Nom d'utilisateur</label
+            >
+            <input
+              type="text"
+              id="registerUsername"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="registerPassword"
+              class="block text-sm font-medium text-gray-700"
+              >Mot de passe</label
+            >
+            <input
+              type="password"
+              id="registerPassword"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700"
+          >
+            S'inscrire
+          </button>
+        </form>
+      </div>
+
+      <!-- Formulaire de connexion -->
+      <div class="mt-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Connexion</h2>
+        <form id="loginForm" class="space-y-4">
+          <div>
+            <label
+              for="loginEmail"
+              class="block text-sm font-medium text-gray-700"
+              >Email</label
+            >
+            <input
+              type="email"
+              id="loginEmail"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="loginPassword"
+              class="block text-sm font-medium text-gray-700"
+              >Mot de passe</label
+            >
+            <input
+              type="password"
+              id="loginPassword"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-green-600 text-white p-2 rounded-md hover:bg-green-700"
+          >
+            Se connecter
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // Inscription
+      window.onload = function () {
+        const token = localStorage.getItem("token");
+        if (token) {
+          // Vérifier si le token est encore valide
+          fetch("/auth/verify-token", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.valid) {
+                // Si le token est valide, rediriger vers la page caméra
+                window.location.href = "/camera";
+              }
+            })
+            .catch((err) =>
+              console.error("Erreur lors de la vérification du token", err)
+            );
+        }
+      };
+      document
+        .getElementById("registerForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const email = document.getElementById("registerEmail").value;
+          const username = document.getElementById("registerUsername").value;
+          const password = document.getElementById("registerPassword").value;
+
+          fetch("/auth/register", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email, username, password }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              console.log(data);
+              alert("Inscription réussie");
+            })
+            .catch((error) =>
+              console.error("Erreur lors de l'inscription:", error)
+            );
+        });
+
+      // Connexion
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const email = document.getElementById("loginEmail").value;
+          const password = document.getElementById("loginPassword").value;
+
+          fetch("/auth/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email, password }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              console.log(data);
+              localStorage.setItem("token", data.token); // Stocker le token dans localStorage
+              console.log("Token: ", data.token);
+              window.location.href = "/camera"; // Rediriger vers la page caméra
+              alert("Connexion réussie");
+            })
+            .catch((error) =>
+              console.error("Erreur lors de la connexion:", error)
+            );
+        });
+    </script>
+  </body>
+</html>

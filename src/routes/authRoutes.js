@@ -10,12 +10,17 @@ router.post("/register", authController.register);
 router.post("/login", authController.login);
 
 // Route pour l'upload d'images (sécurisée avec JWT)
-router.post("/upload", authController.uploadImage); // , verifyToken
+router.post("/upload", verifyToken, authController.uploadImage); // , verifyToken
 
 // Route pour afficher les images
 router.get("/images", authController.getImages);
 
 // Route pour liker une image
 router.post("/like/:imageId", authController.likeImage);
+
+// Route pour vérifier la validité du token
+router.post("/verify-token", verifyToken, (req, res) => {
+  res.status(200).json({ valid: true });
+});
 
 module.exports = router;
