@@ -9,6 +9,7 @@ services:
     volumes:
       - .:/app
       - ./scripts:/scripts
+      - ./frames:/usr/src/frames
     ports:
       - "3000:3000"
     command: sh -c "/scripts/wait-for-it.sh db && node src/app.js" # Correction ici

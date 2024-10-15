@@ -4,6 +4,7 @@ const db = require("../../config/database"); // Import de la connexion à la bas
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const sharp = require("sharp");
 
 // Fonction d'inscription (register)
 exports.register = (req, res) => {
@@ -94,49 +95,70 @@ exports.uploadImage = (req, res) => {
   const { image } = req.body;
   const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token JWT
 
-  // Vérifie si c'est une image envoyée via la webcam (en Base64)
-  if (image.startsWith("data:image/png;base64,")) {
-    const base64Data = image.replace(/^data:image\/png;base64,/, "");
-    const filename = Date.now() + ".png";
-    const filePath = path.join(__dirname, "../uploads/", filename);
-
-    // Sauvegarder l'image sur le serveur
-    fs.writeFile(filePath, base64Data, "base64", (err) => {
-      if (err) {
-        console.log("Erreur lors de la sauvegarde de l'image");
-        return res.status(500).send("Erreur lors de la sauvegarde de l'image");
-      }
-
-      // Sauvegarder le chemin de l'image dans la base de données
-      db.query(
-        "INSERT INTO images (user_id, image_path) VALUES (?, ?)",
-        [userId, `/uploads/${filename}`],
-        (err, result) => {
-          if (err) {
-            return res
-              .status(500)
-              .send("Erreur du serveur lors de l'enregistrement de l'image");
-          }
-          res
-            .status(200)
-            .send({ message: "Image sauvegardée avec succès", file: filename });
-        }
-      );
-    });
-  } else {
+  // Vérifier si c'est une image envoyée via la webcam (Base64)
+  if (!image.startsWith("data:image/png;base64,")) {
     return res.status(400).send("Format d'image non supporté.");
   }
+
+  const base64Data = image.replace(/^data:image\/png;base64,/, "");
+  const userImageBuffer = Buffer.from(base64Data, "base64");
+  const filename = `${Date.now()}.png`;
+  const filePath = path.join(__dirname, "../uploads/", filename);
+
+  // Sauvegarder l'image sur le serveur
+  fs.writeFile(filePath, userImageBuffer, (err) => {
+    if (err) {
+      console.error("Erreur lors de la sauvegarde de l'image:", err);
+      return res.status(500).send("Erreur lors de la sauvegarde de l'image");
+    }
+
+    // Sauvegarder le chemin de l'image dans la base de données
+    db.query(
+      "INSERT INTO images (user_id, image_path) VALUES (?, ?)",
+      [userId, `/uploads/${filename}`],
+      (err, result) => {
+        if (err) {
+          console.error("Erreur lors de l'enregistrement de l'image:", err);
+          return res
+            .status(500)
+            .send("Erreur lors de l'enregistrement de l'image.");
+        }
+        res
+          .status(200)
+          .send({ message: "Image sauvegardée avec succès", file: filename });
+      }
+    );
+  });
 };
 
 // Récupérer les images de tous les utilisateurs
 exports.getImages = (req, res) => {
   db.query("SELECT * FROM images", (err, results) => {
     if (err) {
-      console.log(err);
-      console.log("Erreur lors de la récupération des images");
-      return res.status(500).send("Erreur lors de la récupération des images");
+      console.error("Erreur lors de la récupération des images :", err);
+      return res.status(500).send("Erreur lors de la récupération des images.");
     }
     res.status(200).json(results);
+  });
+};
+
+// Fonction pour lister les fichiers de calques
+exports.getFrames = (req, res) => {
+  const framesDir = path.join(__dirname, "../frames"); // Assure-toi que ce chemin est correct
+
+  // Lire le contenu du dossier
+  fs.readdir(framesDir, (err, files) => {
+    if (err) {
+      console.error(
+        "Erreur lors de la lecture des fichiers dans frames :",
+        err
+      );
+      return res.status(500).send("Erreur lors de la récupération des frames.");
+    }
+
+    // Filtrer uniquement les fichiers PNG
+    const frameFiles = files.filter((file) => file.endsWith(".png"));
+    res.status(200).json(frameFiles); // Retourner la liste des fichiers au format JSON
   });
 };
 
@@ -168,6 +190,49 @@ exports.likeImage = (req, res) => {
           res.status(200).json({ likes: result[0].likes });
         }
       );
+    }
+  );
+};
+
+// Fonction pour ajouter un commentaire
+exports.addComment = (req, res) => {
+  const { userId, comment } = req.body; // Récupérer le userId et le commentaire
+  const imageId = req.params.imageId; // L'ID de l'image à commenter
+
+  // Vérifier que le commentaire n'est pas vide
+  if (!comment || comment.trim() === "") {
+    return res.status(400).send("Le commentaire ne peut pas être vide.");
+  }
+
+  // Insérer le commentaire dans la base de données
+  db.query(
+    "INSERT INTO comments (image_id, user_id, comment) VALUES (?, ?, ?)",
+    [imageId, userId, comment],
+    (err, result) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send("Erreur lors de l'ajout du commentaire.");
+      }
+      res.status(201).send({ message: "Commentaire ajouté avec succès." });
+    }
+  );
+};
+
+// Fonction pour récupérer les commentaires d'une image
+exports.getComments = (req, res) => {
+  const imageId = req.params.imageId;
+
+  db.query(
+    "SELECT comments.comment, comments.created_at, users.email FROM comments JOIN users ON comments.user_id = users.id WHERE image_id = ? ORDER BY comments.created_at DESC",
+    [imageId],
+    (err, results) => {
+      if (err) {
+        console.error(err);
+        return res
+          .status(500)
+          .send("Erreur lors de la récupération des commentaires.");
+      }
+      res.status(200).json(results);
     }
   );
 };
