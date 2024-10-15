@@ -1,0 +1,503 @@
+==== ./src/routes/authRoutes.js ====
+const express = require("express");
+const router = express.Router();
+const authController = require("../controllers/authController");
+const verifyToken = require("../middleware/authMiddleware");
+
+// Route pour l'inscription
+router.post("/register", authController.register);
+
+// Route pour la connexion
+router.post("/login", authController.login);
+
+// Route pour l'upload d'images (sécurisée avec JWT)
+router.post("/upload", authController.uploadImage); // , verifyToken
+
+// Route pour afficher les images
+router.get("/images", authController.getImages);
+
+// Route pour liker une image
+router.post("/like/:imageId", authController.likeImage);
+
+module.exports = router;
+-e 
+
+==== ./src/middleware/authMiddleware.js ====
+const jwt = require("jsonwebtoken");
+
+const verifyToken = (req, res, next) => {
+  const token = req.headers["authorization"];
+
+  if (!token) return res.status(403).json({ message: "Un token est requis." }); // JSON response
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(401).json({ message: "Token invalide." }); // JSON response
+    req.userId = decoded.id;
+    next();
+  });
+};
+
+module.exports = verifyToken;
+-e 
+
+==== ./src/controllers/authController.js ====
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const db = require("../../config/database"); // Import de la connexion à la base de données
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+
+// Fonction d'inscription (register)
+exports.register = (req, res) => {
+  const { email, password } = req.body;
+
+  // Vérifie si l'utilisateur existe déjà
+  db.query("SELECT * FROM users WHERE email = ?", [email], (err, result) => {
+    if (err) {
+      return res.status(500).send("Erreur du serveur");
+    }
+    if (result.length > 0) {
+      console.log("cet email est déjà utilisé");
+      return res.status(400).send("Cet email est déjà utilisé.");
+    }
+
+    // Hacher le mot de passe et insérer l'utilisateur dans la base de données
+    bcrypt.hash(password, 10, (err, hash) => {
+      if (err) throw err;
+      db.query(
+        "INSERT INTO users (email, password) VALUES (?, ?)",
+        [email, hash],
+        (err, result) => {
+          if (err) {
+            return res
+              .status(500)
+              .send("Erreur du serveur lors de l'enregistrement");
+          }
+
+          // Générer un token JWT
+          const token = jwt.sign(
+            { id: result.insertId },
+            process.env.JWT_SECRET,
+            {
+              expiresIn: "1h",
+            }
+          );
+          res.status(201).json({ token });
+        }
+      );
+    });
+  });
+};
+
+// Fonction de connexion (login)
+exports.login = (req, res) => {
+  const { email, password } = req.body;
+
+  // Vérifier si l'utilisateur existe
+  db.query("SELECT * FROM users WHERE email = ?", [email], (err, result) => {
+    if (err) {
+      return res.status(500).send("Erreur du serveur");
+    }
+    if (result.length === 0) {
+      return res.status(400).send("Utilisateur non trouvé.");
+    }
+
+    const user = result[0];
+
+    // Comparer le mot de passe avec le hachage stocké
+    bcrypt.compare(password, user.password, (err, isMatch) => {
+      if (err) throw err;
+
+      if (isMatch) {
+        // Générer un token JWT
+        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+          expiresIn: "1h",
+        });
+        res.json({ token });
+      } else {
+        res.status(400).send("Mot de passe incorrect");
+      }
+    });
+  });
+};
+
+// Configurer multer pour stocker les images dans un dossier local
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/"); // Les images seront sauvegardées dans le dossier "uploads"
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Nom unique pour chaque fichier
+  },
+});
+const upload = multer({ storage: storage });
+// Gestion de l'upload d'images (via fichier ou via base64 pour la webcam)
+exports.uploadImage = (req, res) => {
+  //   const { image } = req.body;
+  //   const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token JWT
+  console.log(req.body);
+  console.log("debut de fonction uploadImage");
+  const { image, userId } = req.body;
+
+  // Vérifie si c'est une image envoyée via la webcam (en Base64)
+  if (image.startsWith("data:image/png;base64,")) {
+    const base64Data = image.replace(/^data:image\/png;base64,/, "");
+    const filename = Date.now() + ".png";
+    const filePath = path.join(__dirname, "../uploads/", filename);
+
+    // Sauvegarder l'image sur le serveur
+    fs.writeFile(filePath, base64Data, "base64", (err) => {
+      console.log("debut de fonction writeFile");
+      if (err) {
+        console.log(err);
+        console.log("Erreur lors de la sauvegarde de l'image 1");
+        return res.status(500).send("Erreur lors de la sauvegarde de l'image");
+      }
+
+      // Sauvegarder le chemin de l'image dans la base de données
+      db.query(
+        "INSERT INTO images (user_id, image_path) VALUES (?, ?)",
+        [userId, `/uploads/${filename}`],
+        (err, result) => {
+          if (err) {
+            console.log(err);
+            console.log("Erreur lors de la sauvegarde de l'image 2");
+            return res
+              .status(500)
+              .send("Erreur du serveur lors de l'enregistrement de l'image");
+          }
+          res
+            .status(200)
+            .send({ message: "Image sauvegardée avec succès", file: filename });
+        }
+      );
+    });
+  } else {
+    console.log(err);
+    console.log("format d'image non supporté");
+    return res.status(400).send("Format d'image non supporté.");
+  }
+};
+
+// Récupérer les images de tous les utilisateurs
+exports.getImages = (req, res) => {
+  db.query("SELECT * FROM images", (err, results) => {
+    if (err) {
+      console.log(err);
+      console.log("Erreur lors de la récupération des images");
+      return res.status(500).send("Erreur lors de la récupération des images");
+    }
+    res.status(200).json(results);
+  });
+};
+
+// Fonction pour liker une image
+exports.likeImage = (req, res) => {
+  const imageId = req.params.imageId;
+
+  // Incrémenter le compteur de likes pour l'image spécifiée
+  db.query(
+    "UPDATE images SET likes = likes + 1 WHERE id = ?",
+    [imageId],
+    (err, result) => {
+      if (err) {
+        return res.status(500).send("Erreur lors de l'enregistrement du like.");
+      }
+
+      // Récupérer le nouveau nombre de likes
+      db.query(
+        "SELECT likes FROM images WHERE id = ?",
+        [imageId],
+        (err, result) => {
+          if (err) {
+            return res
+              .status(500)
+              .send("Erreur lors de la récupération des likes.");
+          }
+
+          // Envoyer la nouvelle valeur de likes au client
+          res.status(200).json({ likes: result[0].likes });
+        }
+      );
+    }
+  );
+};
+-e 
+
+==== ./src/public/camera.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camagru - Capture Webcam</title>
+    <style>
+      #canvas {
+        border: 2px solid black;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Prendre une photo avec votre webcam et ajouter un cadre</h1>
+
+    <video id="video" width="640" height="480" autoplay></video>
+    <button id="capture">Capturer la photo</button>
+    <canvas id="canvas" width="640" height="480"></canvas>
+
+    <h3>Choisir un cadre :</h3>
+    <select id="frame-select">
+      <option value="">Aucun cadre</option>
+      <option value="frame1">Cadre 1</option>
+      <option value="frame2">Cadre 2</option>
+      <option value="frame3">Cadre 3</option>
+    </select>
+
+    <button id="save">Sauvegarder la photo</button>
+
+    <script>
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+      const context = canvas.getContext("2d");
+      const captureButton = document.getElementById("capture");
+      const saveButton = document.getElementById("save");
+      const frameSelect = document.getElementById("frame-select");
+
+      // Accéder à la webcam
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((stream) => {
+          video.srcObject = stream;
+        })
+        .catch((err) => {
+          console.error("Erreur lors de l'accès à la webcam:", err);
+        });
+
+      // Capturer l'image et dessiner dans le canvas
+      captureButton.addEventListener("click", () => {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const selectedFrame = frameSelect.value;
+
+        // Ajouter un cadre basé sur l'option sélectionnée
+        if (selectedFrame === "frame1") {
+          context.strokeStyle = "red";
+          context.lineWidth = 10;
+          context.strokeRect(0, 0, canvas.width, canvas.height);
+        } else if (selectedFrame === "frame2") {
+          context.strokeStyle = "blue";
+          context.lineWidth = 15;
+          context.strokeRect(0, 0, canvas.width, canvas.height);
+        } else if (selectedFrame === "frame3") {
+          context.strokeStyle = "green";
+          context.lineWidth = 20;
+          context.strokeRect(0, 0, canvas.width, canvas.height);
+        }
+      });
+
+      // Sauvegarder l'image capturée avec le cadre appliqué
+      saveButton.addEventListener("click", () => {
+        console.log("saveButton clicked");
+        const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en Base64
+
+        // Créer une requête POST pour envoyer l'image
+        fetch("/auth/upload", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            image: imageData,
+            userId: 1, // Remplace par l'ID de l'utilisateur connecté
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Image sauvegardée avec succès :", data);
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la sauvegarde de l'image :", error);
+          });
+      });
+    </script>
+  </body>
+</html>
+-e 
+
+==== ./src/public/gallery.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Galerie d'images</title>
+  </head>
+  <body>
+    <h1>Galerie d'images</h1>
+    <div id="gallery"></div>
+
+    <script>
+      fetch("/auth/images")
+        .then((response) => response.json())
+        .then((data) => {
+          const galleryDiv = document.getElementById("gallery");
+          data.forEach((image) => {
+            const imgContainer = document.createElement("div");
+            const img = document.createElement("img");
+            const likeButton = document.createElement("button");
+
+            img.src = image.image_path;
+            img.width = 200;
+
+            likeButton.textContent = `Like (${image.likes || 0})`; // Affiche le nombre de likes
+            likeButton.addEventListener("click", () => {
+              // Envoyer une requête POST pour liker l'image
+              fetch(`/auth/like/${image.id}`, { method: "POST" })
+                .then((response) => response.json())
+                .then((data) => {
+                  likeButton.textContent = `Like (${data.likes})`; // Met à jour le nombre de likes
+                });
+            });
+
+            imgContainer.appendChild(img);
+            imgContainer.appendChild(likeButton);
+            galleryDiv.appendChild(imgContainer);
+          });
+        })
+        .catch((error) => {
+          console.error("Erreur lors de la récupération des images :", error);
+        });
+    </script>
+  </body>
+</html>
+-e 
+
+==== ./src/models/User.js ====
+const db = require("../../config/database");
+const bcrypt = require("bcrypt");
+
+// Fonction pour trouver un utilisateur par email
+const findUserByEmail = (email, callback) => {
+  db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
+    if (err) return callback(err);
+    callback(null, results[0]);
+  });
+};
+
+// Fonction pour créer un nouvel utilisateur
+const createUser = (email, password, callback) => {
+  // Hachage du mot de passe
+  bcrypt.hash(password, 10, (err, hash) => {
+    if (err) return callback(err);
+
+    // Insérer l'utilisateur dans la base de données
+    db.query(
+      "INSERT INTO users (email, password) VALUES (?, ?)",
+      [email, hash],
+      (err, results) => {
+        if (err) return callback(err);
+        callback(null, results);
+      }
+    );
+  });
+};
+
+// Fonction pour comparer un mot de passe avec le haché
+const comparePassword = (password, hash, callback) => {
+  console.log("Mot de passe fourni pour la comparaison:", password); // Log du mot de passe fourni
+  console.log("Mot de passe haché stocké dans la base de données:", hash); // Log du hash dans la BDD
+
+  bcrypt.compare(password, hash, (err, isMatch) => {
+    if (err) return callback(err);
+    console.log("Le mot de passe correspond-il ?", isMatch); // Ajoute un log pour vérifier si ça correspond
+    callback(null, isMatch);
+  });
+};
+
+module.exports = {
+  findUserByEmail,
+  createUser,
+  comparePassword,
+};
+-e 
+
+==== ./src/app.js ====
+const express = require("express");
+const app = express();
+const port = process.env.PORT || 3000;
+const bodyParser = require("body-parser");
+const path = require("path");
+
+// Importer la connexion à la base de données
+const db = require("../config/database");
+
+// Importer le middleware JWT pour vérifier le token
+const verifyToken = require("./middleware/authMiddleware");
+
+// Middleware pour parser les requêtes POST
+app.use(bodyParser.json({ limit: "10mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
+
+// Protéger l'accès à la page camera.html (aucun accès direct via /camera.html)
+app.get("/camera", (req, res, next) => {
+  // besoin de vérifier le token pour la galerie avec verifyToken en argument
+  const filePath = path.join(__dirname, "public/camera.html");
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (!res.headersSent) {
+        return next(err); // Propager l'erreur s'il y a un problème
+      }
+    }
+  });
+});
+
+// Protéger l'accès à la page camera.html (aucun accès direct via /camera.html)
+app.get("/gallery", (req, res, next) => {
+  // besoin de vérifier le token pour la galerie avec verifyToken en argument
+  const filePath = path.join(__dirname, "public/gallery.html");
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (!res.headersSent) {
+        return next(err); // Propager l'erreur s'il y a un problème
+      }
+    }
+  });
+});
+
+// Routes d'authentification
+const authRoutes = require("./routes/authRoutes");
+app.use("/auth", authRoutes);
+
+// Route de test du serveur
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Route basique pour tester si le serveur fonctionne
+
+app.get("/", (req, res) => {
+  res.send("Camagru is running!");
+});
+
+// Route de test de la base de données
+app.get("/test-db", (req, res) => {
+  db.query("SELECT 1 + 1 AS solution", (err, results) => {
+    if (err) {
+      res.status(500).send("Erreur avec la base de données");
+      return;
+    }
+    res.send(`La solution est : ${results[0].solution}`);
+  });
+});
+
+// Gestion globale des erreurs
+app.use((err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(500).send("Une erreur est survenue !");
+});
+
+// Démarrer le serveur
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+-e 
+
