@@ -91,11 +91,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 // Gestion de l'upload d'images (via fichier ou via base64 pour la webcam)
 exports.uploadImage = (req, res) => {
-  //   const { image } = req.body;
-  //   const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token JWT
-  console.log(req.body);
-  console.log("debut de fonction uploadImage");
-  const { image, userId } = req.body;
+  const { image } = req.body;
+  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token JWT
 
   // Vérifie si c'est une image envoyée via la webcam (en Base64)
   if (image.startsWith("data:image/png;base64,")) {
@@ -105,10 +102,8 @@ exports.uploadImage = (req, res) => {
 
     // Sauvegarder l'image sur le serveur
     fs.writeFile(filePath, base64Data, "base64", (err) => {
-      console.log("debut de fonction writeFile");
       if (err) {
-        console.log(err);
-        console.log("Erreur lors de la sauvegarde de l'image 1");
+        console.log("Erreur lors de la sauvegarde de l'image");
         return res.status(500).send("Erreur lors de la sauvegarde de l'image");
       }
 
@@ -118,8 +113,6 @@ exports.uploadImage = (req, res) => {
         [userId, `/uploads/${filename}`],
         (err, result) => {
           if (err) {
-            console.log(err);
-            console.log("Erreur lors de la sauvegarde de l'image 2");
             return res
               .status(500)
               .send("Erreur du serveur lors de l'enregistrement de l'image");
@@ -131,8 +124,6 @@ exports.uploadImage = (req, res) => {
       );
     });
   } else {
-    console.log(err);
-    console.log("format d'image non supporté");
     return res.status(400).send("Format d'image non supporté.");
   }
 };

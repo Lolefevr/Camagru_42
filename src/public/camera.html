@@ -68,19 +68,16 @@
 
       // Sauvegarder l'image capturée avec le cadre appliqué
       saveButton.addEventListener("click", () => {
-        console.log("saveButton clicked");
-        const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en Base64
+        const token = localStorage.getItem("token"); // Récupérer le token depuis le localStorage
+        const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en image Base64
 
-        // Créer une requête POST pour envoyer l'image
         fetch("/auth/upload", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // Envoyer le token JWT
           },
-          body: JSON.stringify({
-            image: imageData,
-            userId: 1, // Remplace par l'ID de l'utilisateur connecté
-          }),
+          body: JSON.stringify({ image: imageData }), // Envoyer l'image Base64 dans le body
         })
           .then((response) => response.json())
           .then((data) => {
