@@ -28,6 +28,33 @@
     <button id="save">Sauvegarder la photo</button>
 
     <script>
+      // Vérifier le token à chaque chargement
+      window.onload = function () {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          window.location.href = "/"; // Rediriger si aucun token n'est trouvé
+        }
+
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+          .then((response) => {
+            if (!response.ok) {
+              localStorage.removeItem("token");
+              window.location.href = "/";
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la vérification du token :", err);
+            localStorage.removeItem("token");
+            window.location.href = "/";
+          });
+      };
+
       const video = document.getElementById("video");
       const canvas = document.getElementById("canvas");
       const context = canvas.getContext("2d");
@@ -50,7 +77,6 @@
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const selectedFrame = frameSelect.value;
 
-        // Ajouter un cadre basé sur l'option sélectionnée
         if (selectedFrame === "frame1") {
           context.strokeStyle = "red";
           context.lineWidth = 10;
@@ -68,16 +94,16 @@
 
       // Sauvegarder l'image capturée avec le cadre appliqué
       saveButton.addEventListener("click", () => {
-        const token = localStorage.getItem("token"); // Récupérer le token depuis le localStorage
-        const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en image Base64
+        const token = localStorage.getItem("token");
+        const imageData = canvas.toDataURL("image/png");
 
         fetch("/auth/upload", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // Envoyer le token JWT
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ image: imageData }), // Envoyer l'image Base64 dans le body
+          body: JSON.stringify({ image: imageData }),
         })
           .then((response) => response.json())
           .then((data) => {
