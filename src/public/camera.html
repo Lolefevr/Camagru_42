@@ -8,6 +8,13 @@
       #canvas {
         border: 2px solid black;
       }
+      #controls {
+        margin-top: 10px;
+      }
+      button:disabled {
+        background-color: #cccccc; /* Changer la couleur pour montrer qu'il est désactivé */
+        cursor: not-allowed;
+      }
     </style>
   </head>
   <body>
@@ -24,7 +31,19 @@
       <!-- Les calques seront chargés ici -->
     </select>
 
-    <button id="save">Sauvegarder la photo</button>
+    <!-- Contrôles pour redimensionner et déplacer le filtre -->
+    <div id="controls">
+      <h3>Contrôles du filtre :</h3>
+      <label>Position X :</label>
+      <input type="range" id="posX" min="0" max="640" value="0" />
+      <label>Position Y :</label>
+      <input type="range" id="posY" min="0" max="480" value="0" />
+      <label>Taille :</label>
+      <input type="range" id="size" min="100" max="640" value="640" />
+    </div>
+
+    <!-- Désactiver le bouton Sauvegarder par défaut -->
+    <button id="save" disabled>Sauvegarder la photo</button>
 
     <script>
       const video = document.getElementById("video");
@@ -33,12 +52,16 @@
       const captureButton = document.getElementById("capture");
       const saveButton = document.getElementById("save");
       const frameSelect = document.getElementById("frame-select");
+      const posXSlider = document.getElementById("posX");
+      const posYSlider = document.getElementById("posY");
+      const sizeSlider = document.getElementById("size");
+
+      let capturedImage = null; // Stocker l'image capturée pour réutilisation
 
       // Charger dynamiquement les frames depuis le serveur
       fetch("/auth/frames")
         .then((response) => response.json())
         .then((frames) => {
-          // Remplir le dropdown avec les frames disponibles
           frames.forEach((frame) => {
             const option = document.createElement("option");
             option.value = frame;
@@ -60,24 +83,46 @@
           console.error("Erreur lors de l'accès à la webcam:", err);
         });
 
-      // Capturer l'image via la webcam et dessiner dans le canvas
+      // Capturer l'image via la webcam et la stocker dans "capturedImage"
       captureButton.addEventListener("click", () => {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        capturedImage = context.getImageData(0, 0, canvas.width, canvas.height); // Stocker l'image capturée
+        saveButton.disabled = false; // Activer le bouton de sauvegarde après la capture
+        applyFilter(); // Appliquer le filtre par défaut
+      });
+
+      // Appliquer un filtre dynamique sur l'image capturée
+      frameSelect.addEventListener("change", applyFilter);
+      posXSlider.addEventListener("input", applyFilter);
+      posYSlider.addEventListener("input", applyFilter);
+      sizeSlider.addEventListener("input", applyFilter);
+
+      function applyFilter() {
+        if (!capturedImage) return; // Si aucune image n'a été capturée, on ne fait rien
+
+        // Restaurer l'image capturée
+        context.putImageData(capturedImage, 0, 0);
 
         const selectedFrame = frameSelect.value;
         if (selectedFrame) {
-          // Charger l'image du calque sélectionné
           const frameImage = new Image();
-          frameImage.src = `/frames/${selectedFrame}`; // Chemin de l'image de calque
+          frameImage.src = `/frames/${selectedFrame}`; // Charger le calque sélectionné
+
           frameImage.onload = () => {
-            // Dessiner le calque sur le canvas par-dessus la photo
-            context.drawImage(frameImage, 0, 0, canvas.width, canvas.height);
+            const posX = parseInt(posXSlider.value);
+            const posY = parseInt(posYSlider.value);
+            const size = parseInt(sizeSlider.value);
+
+            // Dessiner le filtre à la position et avec la taille choisie
+            context.drawImage(frameImage, posX, posY, size, size);
           };
         }
-      });
+      }
 
       // Sauvegarder l'image avec le calque appliqué
       saveButton.addEventListener("click", () => {
+        if (!capturedImage) return; // Vérifier qu'une image a bien été capturée avant de sauvegarder
+
         const token = localStorage.getItem("token"); // Récupérer le token depuis le localStorage
         const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en image Base64
 
@@ -98,6 +143,5 @@
           });
       });
     </script>
-    <script src="/logout.js"></script>
   </body>
 </html>
