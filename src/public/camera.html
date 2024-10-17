@@ -85,6 +85,10 @@
         <!-- Les calques seront chargés ici -->
       </select>
 
+      <!-- Nouveau bouton pour uploader une image -->
+      <h3>Ou importer une image depuis votre PC :</h3>
+      <input type="file" id="image-upload" accept="image/png, image/jpeg" />
+
       <div id="controls">
         <h3>Contrôles du filtre :</h3>
         <label>Position X :</label>
@@ -118,8 +122,10 @@
       const posYSlider = document.getElementById("posY");
       const sizeSlider = document.getElementById("size");
       const imageList = document.getElementById("image-list");
+      const imageUpload = document.getElementById("image-upload"); // Référence pour l'upload d'image
 
       let capturedImage = null; // Stocker l'image capturée pour réutilisation
+      let uploadedImage = null; // Stocker l'image uploadée
 
       // Charger dynamiquement les frames depuis le serveur
       fetch("/auth/frames")
@@ -154,6 +160,26 @@
         applyFilter(); // Appliquer le filtre par défaut
       });
 
+      // Gérer le chargement d'une image depuis le PC
+      imageUpload.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function (event) {
+          uploadedImage = new Image();
+          uploadedImage.src = event.target.result; // Charger l'image dans l'élément Image
+
+          uploadedImage.onload = function () {
+            // Appliquer l'image uploadée comme un calque
+            applyFilter();
+          };
+        };
+
+        if (file) {
+          reader.readAsDataURL(file);
+        }
+      });
+
       // Appliquer un filtre dynamique sur l'image capturée
       frameSelect.addEventListener("change", applyFilter);
       posXSlider.addEventListener("input", applyFilter);
@@ -180,9 +206,19 @@
             context.drawImage(frameImage, posX, posY, size, size);
           };
         }
+
+        // Si une image est uploadée depuis le PC
+        if (uploadedImage) {
+          const posX = parseInt(posXSlider.value);
+          const posY = parseInt(posYSlider.value);
+          const size = parseInt(sizeSlider.value);
+
+          // Dessiner l'image uploadée à la position et avec la taille choisies
+          context.drawImage(uploadedImage, posX, posY, size, size);
+        }
       }
 
-      // Sauvegarder l'image avec le calque appliqué
+      // Sauvegarder l'image avec le calque ou l'image uploadée appliquée
       saveButton.addEventListener("click", () => {
         if (!capturedImage) return; // Vérifier qu'une image a bien été capturée avant de sauvegarder
 
