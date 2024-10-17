@@ -4,10 +4,74 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Galerie d'images</title>
+    <style>
+      body {
+        display: grid;
+        grid-template-areas:
+          "header"
+          "main"
+          "footer";
+        grid-template-rows: auto 1fr auto;
+        height: 100vh;
+        margin: 0;
+      }
+      header {
+        grid-area: header;
+        background-color: #333;
+        color: white;
+        padding: 1rem;
+        text-align: center;
+        position: relative;
+      }
+      footer {
+        grid-area: footer;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        padding: 1rem;
+      }
+      main {
+        grid-area: main;
+        padding: 1rem;
+        background-color: #f4f4f4;
+        overflow-y: auto;
+      }
+      .logout-btn {
+        position: absolute;
+        top: 50%;
+        right: 1rem;
+        transform: translateY(-50%);
+        background-color: red;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+        margin-bottom: 10px;
+        display: block;
+      }
+      button {
+        margin-top: 10px;
+      }
+    </style>
   </head>
   <body>
-    <h1>Galerie d'images</h1>
-    <div id="gallery"></div>
+    <header>
+      <h1>Galerie d'images</h1>
+      <button class="logout-btn">Déconnexion</button>
+    </header>
+
+    <main>
+      <div id="gallery"></div>
+    </main>
+
+    <footer>
+      <p>Camagru © 2024</p>
+    </footer>
 
     <script>
       // Vérification du token au chargement
@@ -27,6 +91,24 @@
           .catch((err) => {
             console.error("Erreur lors de la vérification du token :", err);
             window.location.href = "/";
+          });
+      });
+
+      // Fonction de déconnexion
+      document.querySelector(".logout-btn").addEventListener("click", () => {
+        fetch("/auth/logout", {
+          method: "POST",
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (response.ok) {
+              window.location.href = "/"; // Rediriger vers la page d'accueil
+            } else {
+              throw new Error("Erreur lors de la déconnexion");
+            }
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la déconnexion :", error);
           });
       });
 
@@ -50,7 +132,20 @@
             img.src = image.image_path;
             img.width = 200;
 
-            likeButton.textContent = `Like (${image.likes || 0})`;
+            // Charger l'état du like (vérifier si l'utilisateur a liké l'image)
+            fetch(`/auth/like-status/${image.id}`, {
+              credentials: "include", // Inclure les cookies
+            })
+              .then((response) => response.json())
+              .then((likeData) => {
+                if (likeData.liked) {
+                  likeButton.textContent = `Unlike (${image.likes})`; // Si déjà liké
+                } else {
+                  likeButton.textContent = `Like (${image.likes})`; // Si pas liké
+                }
+              });
+
+            // Gestion des likes (ajouter ou retirer un like)
             likeButton.addEventListener("click", () => {
               fetch(`/auth/like/${image.id}`, {
                 method: "POST",
@@ -58,7 +153,18 @@
               })
                 .then((response) => response.json())
                 .then((data) => {
-                  likeButton.textContent = `Like (${data.likes})`;
+                  // Mettre à jour le bouton après un like/unlike
+                  fetch(`/auth/like-status/${image.id}`, {
+                    credentials: "include", // Inclure les cookies
+                  })
+                    .then((response) => response.json())
+                    .then((likeData) => {
+                      if (likeData.liked) {
+                        likeButton.textContent = `Unlike (${likeData.likes})`;
+                      } else {
+                        likeButton.textContent = `Like (${likeData.likes})`;
+                      }
+                    });
                 });
             });
 
@@ -82,22 +188,10 @@
                   credentials: "include", // Inclure les cookies
                   body: JSON.stringify({ comment }),
                 })
-                  .then((response) => {
-                    if (!response.ok) {
-                      throw new Error("Erreur lors de l'ajout du commentaire");
-                    }
-                    return response.json();
-                  })
+                  .then((response) => response.json())
                   .then((data) => {
-                    console.log("Commentaire ajouté :", data);
                     commentInput.value = ""; // Réinitialiser le champ de commentaire
                     loadComments(image.id, commentSection); // Recharger les commentaires après ajout
-                  })
-                  .catch((error) => {
-                    console.error(
-                      "Erreur lors de l'ajout du commentaire :",
-                      error
-                    );
                   });
               }
             });
@@ -138,6 +232,5 @@
           });
       }
     </script>
-    <script src="/logout.js"></script>
   </body>
 </html>

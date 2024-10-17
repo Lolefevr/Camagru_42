@@ -189,34 +189,114 @@ exports.getFrames = (req, res) => {
   });
 };
 
-// Fonction pour liker une image
-exports.likeImage = (req, res) => {
+// Fonction pour vérifier si l'utilisateur a déjà liké l'image
+exports.likeStatus = (req, res) => {
   const imageId = req.params.imageId;
+  const userId = req.userId;
 
-  // Incrémenter le compteur de likes pour l'image spécifiée
   db.query(
-    "UPDATE images SET likes = likes + 1 WHERE id = ?",
-    [imageId],
+    "SELECT * FROM likes WHERE user_id = ? AND image_id = ?",
+    [userId, imageId],
     (err, result) => {
       if (err) {
-        return res.status(500).send("Erreur lors de l'enregistrement du like.");
+        return res
+          .status(500)
+          .send("Erreur lors de la vérification des likes.");
       }
 
-      // Récupérer le nouveau nombre de likes
+      const liked = result.length > 0;
       db.query(
         "SELECT likes FROM images WHERE id = ?",
         [imageId],
-        (err, result) => {
+        (err, rows) => {
           if (err) {
             return res
               .status(500)
               .send("Erreur lors de la récupération des likes.");
           }
-
-          // Envoyer la nouvelle valeur de likes au client
-          res.status(200).json({ likes: result[0].likes });
+          const likes = rows[0].likes;
+          res.status(200).json({ liked, likes });
         }
       );
+    }
+  );
+};
+
+// Fonction pour liker ou annuler un like sur une image
+exports.likeImage = (req, res) => {
+  const imageId = req.params.imageId;
+  const userId = req.userId;
+
+  // Vérifier si l'utilisateur a déjà liké l'image
+  db.query(
+    "SELECT * FROM likes WHERE user_id = ? AND image_id = ?",
+    [userId, imageId],
+    (err, result) => {
+      if (err) {
+        return res
+          .status(500)
+          .send("Erreur lors de la vérification des likes.");
+      }
+
+      if (result.length > 0) {
+        // L'utilisateur a déjà liké, on retire le like
+        db.query(
+          "DELETE FROM likes WHERE user_id = ? AND image_id = ?",
+          [userId, imageId],
+          (err, result) => {
+            if (err) {
+              return res
+                .status(500)
+                .send("Erreur lors de la suppression du like.");
+            }
+
+            // Décrémenter le compteur de likes de l'image
+            db.query(
+              "UPDATE images SET likes = likes - 1 WHERE id = ?",
+              [imageId],
+              (err, result) => {
+                if (err) {
+                  return res
+                    .status(500)
+                    .send(
+                      "Erreur lors de la mise à jour du compteur de likes."
+                    );
+                }
+
+                return res.status(200).json({ message: "Like retiré." });
+              }
+            );
+          }
+        );
+      } else {
+        // L'utilisateur n'a pas encore liké, on ajoute le like
+        db.query(
+          "INSERT INTO likes (user_id, image_id) VALUES (?, ?)",
+          [userId, imageId],
+          (err, result) => {
+            if (err) {
+              return res.status(500).send("Erreur lors de l'ajout du like.");
+            }
+
+            // Incrémenter le compteur de likes de l'image
+            db.query(
+              "UPDATE images SET likes = likes + 1 WHERE id = ?",
+              [imageId],
+              (err, result) => {
+                if (err) {
+                  return res
+                    .status(500)
+                    .send(
+                      "Erreur lors de la mise à jour du compteur de likes."
+                    );
+                }
+
+                return res.status(200).json({ message: "Like ajouté." });
+              }
+            );
+          }
+        );
+      }
     }
   );
 };

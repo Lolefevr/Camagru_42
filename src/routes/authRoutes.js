@@ -21,6 +21,9 @@ router.get("/images", authController.getImages);
 // Route pour liker une image
 router.post("/like/:imageId", verifyToken, authController.likeImage);
 
+// Route pour vérifier si l'utilisateur a déjà liké une image
+router.get("/like-status/:imageId", verifyToken, authController.likeStatus);
+
 // Route pour vérifier la validité du token
 router.post("/verify-token", verifyToken, authController.verifyToken);
 
