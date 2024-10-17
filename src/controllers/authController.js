@@ -236,3 +236,46 @@ exports.getComments = (req, res) => {
     }
   );
 };
+
+// Récupérer les images de l'utilisateur connecté
+exports.getUserImages = (req, res) => {
+  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token
+
+  db.query(
+    "SELECT * FROM images WHERE user_id = ?",
+    [userId],
+    (err, results) => {
+      if (err) {
+        console.error(
+          "Erreur lors de la récupération des images de l'utilisateur :",
+          err
+        );
+        return res
+          .status(500)
+          .send("Erreur lors de la récupération des images.");
+      }
+      res.status(200).json(results);
+    }
+  );
+};
+
+// Supprimer une image
+exports.deleteImage = (req, res) => {
+  const imageId = req.params.imageId;
+  const userId = req.userId; // ID de l'utilisateur connecté
+
+  // Vérifier que l'image appartient à l'utilisateur avant de la supprimer
+  db.query(
+    "DELETE FROM images WHERE id = ? AND user_id = ?",
+    [imageId, userId],
+    (err, result) => {
+      if (err) {
+        console.error("Erreur lors de la suppression de l'image :", err);
+        return res
+          .status(500)
+          .send("Erreur lors de la suppression de l'image.");
+      }
+      res.status(200).send({ message: "Image supprimée avec succès" });
+    }
+  );
+};
