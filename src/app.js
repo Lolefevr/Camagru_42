@@ -3,6 +3,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 const bodyParser = require("body-parser");
 const path = require("path");
+const cookieParser = require("cookie-parser"); // Importer cookie-parser
 
 // Importer la connexion à la base de données
 const db = require("../config/database");
@@ -13,12 +14,15 @@ const verifyToken = require("./middleware/authMiddleware");
 // Middleware pour parser les requêtes POST
 app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
+app.use(cookieParser()); // Utiliser cookie-parser
 app.use("/frames", express.static(path.join(__dirname, "frames"))); // Calques (frames)
 app.use(express.static(path.join(__dirname, "public")));
 
 // Protéger l'accès à la page camera.html (aucun accès direct via /camera.html)
-app.get("/camera", (req, res, next) => {
-  // besoin de vérifier le token pour la galerie avec verifyToken en argument
+app.get("/camera", verifyToken, (req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "-1");
   const filePath = path.join(__dirname, "public/camera.html");
   res.sendFile(filePath, (err) => {
     if (err) {
@@ -29,14 +33,16 @@ app.get("/camera", (req, res, next) => {
   });
 });
 
-// Protéger l'accès à la page camera.html (aucun accès direct via /camera.html)
-app.get("/gallery", (req, res, next) => {
-  // besoin de vérifier le token pour la galerie avec verifyToken en argument
+// Protéger l'accès à la page gallery.html (aucun accès direct via /gallery.html)
+app.get("/gallery", verifyToken, (req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "-1");
   const filePath = path.join(__dirname, "public/gallery.html");
   res.sendFile(filePath, (err) => {
     if (err) {
       if (!res.headersSent) {
-        return next(err); // Propager l'erreur s'il y a un problème
+        return next(err);
       }
     }
   });
@@ -46,10 +52,8 @@ app.get("/gallery", (req, res, next) => {
 const authRoutes = require("./routes/authRoutes");
 app.use("/auth", authRoutes);
 
-// Route de test du serveur
+// Route pour les uploads d'images
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// Route basique pour tester si le serveur fonctionne
 
 // Route par défaut pour afficher la page d'authentification (register et login)
 app.get("/", (req, res) => {
