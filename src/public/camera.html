@@ -122,10 +122,10 @@
       const posYSlider = document.getElementById("posY");
       const sizeSlider = document.getElementById("size");
       const imageList = document.getElementById("image-list");
-      const imageUpload = document.getElementById("image-upload"); // Référence pour l'upload d'image
+      const imageUpload = document.getElementById("image-upload");
 
-      let capturedImage = null; // Stocker l'image capturée pour réutilisation
-      let uploadedImage = null; // Stocker l'image uploadée
+      let capturedImage = null;
+      let uploadedImage = null;
 
       // Charger dynamiquement les frames depuis le serveur
       fetch("/auth/frames")
@@ -134,7 +134,7 @@
           frames.forEach((frame) => {
             const option = document.createElement("option");
             option.value = frame;
-            option.textContent = frame.replace(".png", ""); // Afficher sans l'extension
+            option.textContent = frame.replace(".png", "");
             frameSelect.appendChild(option);
           });
         })
@@ -155,29 +155,9 @@
       // Capturer l'image via la webcam
       captureButton.addEventListener("click", () => {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        capturedImage = context.getImageData(0, 0, canvas.width, canvas.height); // Stocker l'image capturée
-        saveButton.disabled = false; // Activer le bouton de sauvegarde après la capture
-        applyFilter(); // Appliquer le filtre par défaut
-      });
-
-      // Gérer le chargement d'une image depuis le PC
-      imageUpload.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-
-        reader.onload = function (event) {
-          uploadedImage = new Image();
-          uploadedImage.src = event.target.result; // Charger l'image dans l'élément Image
-
-          uploadedImage.onload = function () {
-            // Appliquer l'image uploadée comme un calque
-            applyFilter();
-          };
-        };
-
-        if (file) {
-          reader.readAsDataURL(file);
-        }
+        capturedImage = context.getImageData(0, 0, canvas.width, canvas.height);
+        saveButton.disabled = false;
+        applyFilter();
       });
 
       // Appliquer un filtre dynamique sur l'image capturée
@@ -187,56 +167,49 @@
       sizeSlider.addEventListener("input", applyFilter);
 
       function applyFilter() {
-        if (!capturedImage) return; // Si aucune image n'a été capturée, on ne fait rien
+        if (!capturedImage) return;
 
-        // Restaurer l'image capturée
         context.putImageData(capturedImage, 0, 0);
 
         const selectedFrame = frameSelect.value;
         if (selectedFrame) {
           const frameImage = new Image();
-          frameImage.src = `/frames/${selectedFrame}`; // Charger le calque sélectionné
-
+          frameImage.src = `/frames/${selectedFrame}`;
           frameImage.onload = () => {
             const posX = parseInt(posXSlider.value);
             const posY = parseInt(posYSlider.value);
             const size = parseInt(sizeSlider.value);
-
-            // Dessiner le filtre à la position et avec la taille choisie
             context.drawImage(frameImage, posX, posY, size, size);
           };
         }
 
-        // Si une image est uploadée depuis le PC
         if (uploadedImage) {
           const posX = parseInt(posXSlider.value);
           const posY = parseInt(posYSlider.value);
           const size = parseInt(sizeSlider.value);
-
-          // Dessiner l'image uploadée à la position et avec la taille choisies
           context.drawImage(uploadedImage, posX, posY, size, size);
         }
       }
 
-      // Sauvegarder l'image avec le calque ou l'image uploadée appliquée
+      // Sauvegarder l'image
       saveButton.addEventListener("click", () => {
-        if (!capturedImage) return; // Vérifier qu'une image a bien été capturée avant de sauvegarder
+        if (!capturedImage) return;
 
-        const token = localStorage.getItem("token"); // Récupérer le token depuis le localStorage
-        const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en image Base64
+        const token = localStorage.getItem("token");
+        const imageData = canvas.toDataURL("image/png");
 
         fetch("/auth/upload", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // Envoyer le token JWT
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ image: imageData }), // Envoyer l'image Base64 dans le body
+          body: JSON.stringify({ image: imageData }),
         })
           .then((response) => response.json())
           .then((data) => {
             console.log("Image sauvegardée avec succès :", data);
-            loadUserImages(); // Recharger la liste des images
+            loadUserImages();
           })
           .catch((error) => {
             console.error("Erreur lors de la sauvegarde de l'image :", error);
@@ -255,8 +228,7 @@
         })
           .then((response) => response.json())
           .then((data) => {
-            imageList.innerHTML = ""; // Vider la liste avant de recharger
-
+            imageList.innerHTML = "";
             data.forEach((image) => {
               const imgContainer = document.createElement("div");
               const img = document.createElement("img");
@@ -267,13 +239,28 @@
               deleteButton.classList.add("delete-btn");
               deleteButton.textContent = "Supprimer";
 
-              // Ajouter l'événement de suppression
+              const exportButton = document.createElement("button");
+              exportButton.textContent = "Exporter en PNG";
+              exportButton.style.marginLeft = "10px";
+              exportButton.addEventListener("click", () => {
+                exportImage(image.image_path);
+              });
+
+              const editButton = document.createElement("button");
+              editButton.textContent = "Modifier";
+              editButton.style.marginLeft = "10px";
+              editButton.addEventListener("click", () => {
+                editImage(image.image_path);
+              });
+
               deleteButton.addEventListener("click", () => {
                 deleteImage(image.id);
               });
 
               imgContainer.appendChild(img);
               imgContainer.appendChild(deleteButton);
+              imgContainer.appendChild(exportButton);
+              imgContainer.appendChild(editButton);
               imageList.appendChild(imgContainer);
             });
           })
@@ -295,14 +282,40 @@
           .then((response) => response.json())
           .then((data) => {
             console.log("Image supprimée avec succès :", data);
-            loadUserImages(); // Recharger la liste des images après suppression
+            loadUserImages();
           })
           .catch((error) => {
             console.error("Erreur lors de la suppression de l'image :", error);
           });
       }
 
-      // Charger les images de l'utilisateur au chargement de la page
+      // Exporter l'image en PNG
+      function exportImage(imagePath) {
+        const a = document.createElement("a");
+        a.href = imagePath;
+        a.download = "image.png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+
+      // Modifier une image (charger dans le canvas)
+      function editImage(imagePath) {
+        const img = new Image();
+        img.src = imagePath;
+        img.onload = () => {
+          context.clearRect(0, 0, canvas.width, canvas.height); // Effacer le canvas actuel
+          context.drawImage(img, 0, 0, canvas.width, canvas.height); // Dessiner l'image sur le canvas
+          capturedImage = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          ); // Stocker l'image
+          saveButton.disabled = false; // Activer le bouton de sauvegarde
+        };
+      }
+
       window.onload = loadUserImages;
     </script>
   </body>
