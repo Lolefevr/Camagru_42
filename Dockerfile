@@ -1,23 +1,32 @@
-# Utiliser l'image Node.js
+# Utiliser l'image officielle Node.js 21
 FROM node:21
 
-# Installer apt-utils et netcat pour que wait-for-it fonctionne
-RUN apt-get update && apt-get install -y apt-utils netcat-openbsd
+# Installer les dépendances système pour 'sharp'
+RUN apt-get update && apt-get install -y \
+    libvips-dev \
+    build-essential \
+    python3 \
+    make \
+    g++ \
+	netcat-openbsd
 
-# Définir le répertoire de travail dans le conteneur
+# Définir le répertoire de travail
 WORKDIR /app
 
-# Copier les fichiers package.json et package-lock.json (si présent) pour installer les dépendances
+# Copier package.json et package-lock.json
 COPY package*.json ./
 
-# Installer les dépendances npm
+# Installer les dépendances Node.js
 RUN npm install
 
-# Copier tout le reste des fichiers du projet
+# Copier le reste du code de votre application
 COPY . .
 
-# Exposer le port 3000
+# Exposer le port de l'application
 EXPOSE 3000
 
 # Démarrer l'application
 CMD ["npm", "run", "dev"]
+
+
+

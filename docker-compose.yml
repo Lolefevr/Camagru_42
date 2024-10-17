@@ -7,12 +7,13 @@ services:
     container_name: camagru_app
     working_dir: /app
     volumes:
-      - .:/app
+      - .:/app:delegated
+      - /app/node_modules
       - ./scripts:/scripts
       - ./frames:/usr/src/frames
     ports:
       - "3000:3000"
-    command: sh -c "/scripts/wait-for-it.sh db && node src/app.js" # Correction ici
+    command: sh -c "/scripts/wait-for-it.sh db && node src/app.js"
     environment:
       - NODE_ENV=development
     depends_on:
