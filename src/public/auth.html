@@ -105,11 +105,11 @@
     </div>
 
     <script>
-      // Inscription
+      // Vérifier si un token existe déjà
       window.onload = function () {
         const token = localStorage.getItem("token");
         if (token) {
-          // Vérifier si le token est encore valide
+          // Vérifier si le token est encore valide et si l'utilisateur existe
           fetch("/auth/verify-token", {
             method: "POST",
             headers: {
@@ -117,10 +117,15 @@
               Authorization: `Bearer ${token}`,
             },
           })
-            .then((response) => response.json())
+            .then((response) => {
+              if (!response.ok) {
+                localStorage.removeItem("token");
+                throw new Error("Utilisateur non trouvé.");
+              }
+              return response.json();
+            })
             .then((data) => {
               if (data.valid) {
-                // Si le token est valide, rediriger vers la page caméra
                 window.location.href = "/camera";
               }
             })
@@ -129,6 +134,8 @@
             );
         }
       };
+
+      // Inscription
       document
         .getElementById("registerForm")
         .addEventListener("submit", function (e) {
@@ -146,7 +153,6 @@
           })
             .then((response) => response.json())
             .then((data) => {
-              console.log(data);
               alert("Inscription réussie");
             })
             .catch((error) =>
@@ -171,16 +177,14 @@
           })
             .then((response) => response.json())
             .then((data) => {
-              console.log(data);
               localStorage.setItem("token", data.token); // Stocker le token dans localStorage
-              console.log("Token: ", data.token);
               window.location.href = "/camera"; // Rediriger vers la page caméra
-              alert("Connexion réussie");
             })
             .catch((error) =>
               console.error("Erreur lors de la connexion:", error)
             );
         });
     </script>
+    <script src="/logout.js"></script>
   </body>
 </html>

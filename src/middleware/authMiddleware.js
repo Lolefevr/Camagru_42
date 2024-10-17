@@ -1,18 +1,35 @@
 const jwt = require("jsonwebtoken");
+const db = require("../../config/database");
 
 const verifyToken = (req, res, next) => {
   const token = req.headers["authorization"];
 
-  if (!token) return res.status(403).json({ message: "Un token est requis." }); // JSON response
+  if (!token) {
+    return res.status(403).json({ message: "Un token est requis." });
+  }
 
+  // Décoder le token JWT
   jwt.verify(token.split(" ")[1], process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
-      console.log("Erreur JWT : ", err); // Log l'erreur de vérification JWT
-      return res.status(401).json({ message: "Token invalide." });
+      return res.status(401).json({ message: "Token invalide ou expiré." });
     }
-    console.log("Token décodé : ", decoded); // Log le contenu du token
-    req.userId = decoded.id;
-    next();
+
+    // Vérifier que l'utilisateur existe dans la base de données
+    const userId = decoded.id;
+    db.query("SELECT * FROM users WHERE id = ?", [userId], (err, result) => {
+      if (err) {
+        return res.status(500).send("Erreur du serveur.");
+      }
+
+      if (result.length === 0) {
+        // L'utilisateur n'existe plus dans la base de données
+        return res.status(404).json({ message: "Utilisateur non trouvé." });
+      }
+
+      // Utilisateur trouvé, continuer
+      req.userId = userId;
+      next();
+    });
   });
 };
 

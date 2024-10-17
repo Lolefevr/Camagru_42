@@ -108,6 +108,33 @@
     </footer>
 
     <script>
+      // Vérifier le token à chaque chargement
+      window.onload = function () {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          window.location.href = "/"; // Rediriger si aucun token n'est trouvé
+        }
+
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+          .then((response) => {
+            if (!response.ok) {
+              localStorage.removeItem("token");
+              window.location.href = "/";
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la vérification du token :", err);
+            localStorage.removeItem("token");
+            window.location.href = "/";
+          });
+      };
+
       const video = document.getElementById("video");
       const canvas = document.getElementById("canvas");
       const context = canvas.getContext("2d");
@@ -193,9 +220,9 @@
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // Envoyer le token JWT
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ image: imageData }), // Envoyer l'image Base64 dans le body
+          body: JSON.stringify({ image: imageData }),
         })
           .then((response) => response.json())
           .then((data) => {
