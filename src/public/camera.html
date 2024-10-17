@@ -109,31 +109,24 @@
 
     <script>
       // Vérifier le token à chaque chargement
-      window.onload = function () {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          window.location.href = "/"; // Rediriger si aucun token n'est trouvé
-        }
-
+      window.addEventListener("load", function () {
         fetch("/auth/verify-token", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
+          credentials: "include", // Inclure les cookies
         })
           .then((response) => {
             if (!response.ok) {
-              localStorage.removeItem("token");
-              window.location.href = "/";
+              window.location.href = "/"; // Rediriger si non authentifié
             }
           })
           .catch((err) => {
             console.error("Erreur lors de la vérification du token :", err);
-            localStorage.removeItem("token");
             window.location.href = "/";
           });
-      };
+      });
 
       const video = document.getElementById("video");
       const canvas = document.getElementById("canvas");
@@ -149,19 +142,23 @@
       let capturedImage = null; // Stocker l'image capturée pour réutilisation
 
       // Charger dynamiquement les frames depuis le serveur
-      fetch("/auth/frames")
-        .then((response) => response.json())
-        .then((frames) => {
-          frames.forEach((frame) => {
-            const option = document.createElement("option");
-            option.value = frame;
-            option.textContent = frame.replace(".png", ""); // Afficher sans l'extension
-            frameSelect.appendChild(option);
-          });
+      window.addEventListener("load", function () {
+        fetch("/auth/frames", {
+          credentials: "include",
         })
-        .catch((err) =>
-          console.error("Erreur lors du chargement des frames :", err)
-        );
+          .then((response) => response.json())
+          .then((frames) => {
+            frames.forEach((frame) => {
+              const option = document.createElement("option");
+              option.value = frame;
+              option.textContent = frame.replace(".png", ""); // Afficher sans l'extension
+              frameSelect.appendChild(option);
+            });
+          })
+          .catch((err) =>
+            console.error("Erreur lors du chargement des frames :", err)
+          );
+      });
 
       // Accéder à la webcam
       navigator.mediaDevices
@@ -213,15 +210,14 @@
       saveButton.addEventListener("click", () => {
         if (!capturedImage) return; // Vérifier qu'une image a bien été capturée avant de sauvegarder
 
-        const token = localStorage.getItem("token"); // Récupérer le token depuis le localStorage
         const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en image Base64
 
         fetch("/auth/upload", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
+          credentials: "include", // Inclure les cookies
           body: JSON.stringify({ image: imageData }),
         })
           .then((response) => response.json())
@@ -236,13 +232,9 @@
 
       // Charger les images de l'utilisateur
       function loadUserImages() {
-        const token = localStorage.getItem("token");
-
         fetch("/auth/user-images", {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: "include", // Inclure les cookies
         })
           .then((response) => response.json())
           .then((data) => {
@@ -275,13 +267,9 @@
 
       // Supprimer une image
       function deleteImage(imageId) {
-        const token = localStorage.getItem("token");
-
         fetch(`/auth/delete-image/${imageId}`, {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: "include", // Inclure les cookies
         })
           .then((response) => response.json())
           .then((data) => {
@@ -294,7 +282,8 @@
       }
 
       // Charger les images de l'utilisateur au chargement de la page
-      window.onload = loadUserImages;
+      window.addEventListener("load", loadUserImages);
     </script>
+    <script src="/logout.js"></script>
   </body>
 </html>

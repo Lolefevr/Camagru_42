@@ -1,630 +1,3 @@
-==== ./src/middleware/authMiddleware.js ====
-const jwt = require("jsonwebtoken");
-
-const verifyToken = (req, res, next) => {
-  const token = req.headers["authorization"];
-
-  if (!token) return res.status(403).json({ message: "Un token est requis." }); // JSON response
-
-  jwt.verify(token.split(" ")[1], process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      console.log("Erreur JWT : ", err); // Log l'erreur de vérification JWT
-      return res.status(401).json({ message: "Token invalide." });
-    }
-    console.log("Token décodé : ", decoded); // Log le contenu du token
-    req.userId = decoded.id;
-    next();
-  });
-};
-
-module.exports = verifyToken;
--e
-
-==== ./src/public/auth.html ====
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Camagru - Authentification</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body class="bg-gray-100 flex items-center justify-center h-screen">
-    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-      <h1 class="text-2xl font-bold text-center text-gray-800 mb-8">
-        Bienvenue sur Camagru
-      </h1>
-
-      <!-- Formulaire d'inscription -->
-      <div class="mb-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">Inscription</h2>
-        <form id="registerForm" class="space-y-4">
-          <div>
-            <label
-              for="registerEmail"
-              class="block text-sm font-medium text-gray-700"
-              >Email</label
-            >
-            <input
-              type="email"
-              id="registerEmail"
-              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
-              required
-            />
-          </div>
-          <div>
-            <label
-              for="registerUsername"
-              class="block text-sm font-medium text-gray-700"
-              >Nom d'utilisateur</label
-            >
-            <input
-              type="text"
-              id="registerUsername"
-              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
-              required
-            />
-          </div>
-          <div>
-            <label
-              for="registerPassword"
-              class="block text-sm font-medium text-gray-700"
-              >Mot de passe</label
-            >
-            <input
-              type="password"
-              id="registerPassword"
-              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700"
-          >
-            S'inscrire
-          </button>
-        </form>
-      </div>
-
-      <!-- Formulaire de connexion -->
-      <div class="mt-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">Connexion</h2>
-        <form id="loginForm" class="space-y-4">
-          <div>
-            <label
-              for="loginEmail"
-              class="block text-sm font-medium text-gray-700"
-              >Email</label
-            >
-            <input
-              type="email"
-              id="loginEmail"
-              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
-              required
-            />
-          </div>
-          <div>
-            <label
-              for="loginPassword"
-              class="block text-sm font-medium text-gray-700"
-              >Mot de passe</label
-            >
-            <input
-              type="password"
-              id="loginPassword"
-              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            class="w-full bg-green-600 text-white p-2 rounded-md hover:bg-green-700"
-          >
-            Se connecter
-          </button>
-        </form>
-      </div>
-    </div>
-
-    <script>
-      // Inscription
-      window.onload = function () {
-        const token = localStorage.getItem("token");
-        if (token) {
-          // Vérifier si le token est encore valide
-          fetch("/auth/verify-token", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.valid) {
-                // Si le token est valide, rediriger vers la page caméra
-                window.location.href = "/camera";
-              }
-            })
-            .catch((err) =>
-              console.error("Erreur lors de la vérification du token", err)
-            );
-        }
-      };
-      document
-        .getElementById("registerForm")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
-          const email = document.getElementById("registerEmail").value;
-          const username = document.getElementById("registerUsername").value;
-          const password = document.getElementById("registerPassword").value;
-
-          fetch("/auth/register", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ email, username, password }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              console.log(data);
-              alert("Inscription réussie");
-            })
-            .catch((error) =>
-              console.error("Erreur lors de l'inscription:", error)
-            );
-        });
-
-      // Connexion
-      document
-        .getElementById("loginForm")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
-          const email = document.getElementById("loginEmail").value;
-          const password = document.getElementById("loginPassword").value;
-
-          fetch("/auth/login", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ email, password }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              console.log(data);
-              localStorage.setItem("token", data.token); // Stocker le token dans localStorage
-              console.log("Token: ", data.token);
-              window.location.href = "/camera"; // Rediriger vers la page caméra
-              alert("Connexion réussie");
-            })
-            .catch((error) =>
-              console.error("Erreur lors de la connexion:", error)
-            );
-        });
-    </script>
-  </body>
-</html>
--e
-
-==== ./src/public/camera.html ====
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Camagru - Dashboard & Capture</title>
-    <style>
-      body {
-        display: grid;
-        grid-template-areas:
-          "header header"
-          "main side"
-          "footer footer";
-        grid-template-columns: 1fr 300px;
-        grid-template-rows: auto 1fr auto;
-        height: 100vh;
-        margin: 0;
-      }
-      header {
-        grid-area: header;
-        background-color: #333;
-        color: white;
-        padding: 1rem;
-        text-align: center;
-      }
-      main {
-        grid-area: main;
-        padding: 1rem;
-        background-color: #f4f4f4;
-      }
-      aside {
-        grid-area: side;
-        background-color: #f9f9f9;
-        padding: 1rem;
-        border-left: 1px solid #ddd;
-        overflow-y: auto;
-      }
-      footer {
-        grid-area: footer;
-        background-color: #333;
-        color: white;
-        text-align: center;
-        padding: 1rem;
-      }
-      img {
-        max-width: 100%;
-        height: auto;
-        margin-bottom: 10px;
-        display: block;
-      }
-      .delete-btn {
-        background-color: red;
-        color: white;
-        border: none;
-        padding: 5px 10px;
-        cursor: pointer;
-        margin-bottom: 20px;
-      }
-      #canvas {
-        border: 2px solid black;
-      }
-      #controls {
-        margin-top: 10px;
-      }
-      button:disabled {
-        background-color: #cccccc;
-        cursor: not-allowed;
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1>Dashboard</h1>
-    </header>
-
-    <main>
-      <h2>Capture de Photo avec la Webcam</h2>
-      <video id="video" width="640" height="480" autoplay></video>
-      <button id="capture">Capturer la photo</button>
-      <canvas id="canvas" width="640" height="480"></canvas>
-
-      <h3>Choisir un calque :</h3>
-      <select id="frame-select">
-        <option value="">Aucun calque</option>
-        <!-- Les calques seront chargés ici -->
-      </select>
-
-      <div id="controls">
-        <h3>Contrôles du filtre :</h3>
-        <label>Position X :</label>
-        <input type="range" id="posX" min="0" max="640" value="0" />
-        <label>Position Y :</label>
-        <input type="range" id="posY" min="0" max="480" value="0" />
-        <label>Taille :</label>
-        <input type="range" id="size" min="100" max="640" value="640" />
-      </div>
-
-      <button id="save" disabled>Sauvegarder la photo</button>
-    </main>
-
-    <aside>
-      <h2>Images enregistrées</h2>
-      <div id="image-list"></div>
-    </aside>
-
-    <footer>
-      <p>Camagru © 2024</p>
-    </footer>
-
-    <script>
-      const video = document.getElementById("video");
-      const canvas = document.getElementById("canvas");
-      const context = canvas.getContext("2d");
-      const captureButton = document.getElementById("capture");
-      const saveButton = document.getElementById("save");
-      const frameSelect = document.getElementById("frame-select");
-      const posXSlider = document.getElementById("posX");
-      const posYSlider = document.getElementById("posY");
-      const sizeSlider = document.getElementById("size");
-      const imageList = document.getElementById("image-list");
-
-      let capturedImage = null; // Stocker l'image capturée pour réutilisation
-
-      // Charger dynamiquement les frames depuis le serveur
-      fetch("/auth/frames")
-        .then((response) => response.json())
-        .then((frames) => {
-          frames.forEach((frame) => {
-            const option = document.createElement("option");
-            option.value = frame;
-            option.textContent = frame.replace(".png", ""); // Afficher sans l'extension
-            frameSelect.appendChild(option);
-          });
-        })
-        .catch((err) =>
-          console.error("Erreur lors du chargement des frames :", err)
-        );
-
-      // Accéder à la webcam
-      navigator.mediaDevices
-        .getUserMedia({ video: true })
-        .then((stream) => {
-          video.srcObject = stream;
-        })
-        .catch((err) => {
-          console.error("Erreur lors de l'accès à la webcam:", err);
-        });
-
-      // Capturer l'image via la webcam
-      captureButton.addEventListener("click", () => {
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        capturedImage = context.getImageData(0, 0, canvas.width, canvas.height); // Stocker l'image capturée
-        saveButton.disabled = false; // Activer le bouton de sauvegarde après la capture
-        applyFilter(); // Appliquer le filtre par défaut
-      });
-
-      // Appliquer un filtre dynamique sur l'image capturée
-      frameSelect.addEventListener("change", applyFilter);
-      posXSlider.addEventListener("input", applyFilter);
-      posYSlider.addEventListener("input", applyFilter);
-      sizeSlider.addEventListener("input", applyFilter);
-
-      function applyFilter() {
-        if (!capturedImage) return; // Si aucune image n'a été capturée, on ne fait rien
-
-        // Restaurer l'image capturée
-        context.putImageData(capturedImage, 0, 0);
-
-        const selectedFrame = frameSelect.value;
-        if (selectedFrame) {
-          const frameImage = new Image();
-          frameImage.src = `/frames/${selectedFrame}`; // Charger le calque sélectionné
-
-          frameImage.onload = () => {
-            const posX = parseInt(posXSlider.value);
-            const posY = parseInt(posYSlider.value);
-            const size = parseInt(sizeSlider.value);
-
-            // Dessiner le filtre à la position et avec la taille choisie
-            context.drawImage(frameImage, posX, posY, size, size);
-          };
-        }
-      }
-
-      // Sauvegarder l'image avec le calque appliqué
-      saveButton.addEventListener("click", () => {
-        if (!capturedImage) return; // Vérifier qu'une image a bien été capturée avant de sauvegarder
-
-        const token = localStorage.getItem("token"); // Récupérer le token depuis le localStorage
-        const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en image Base64
-
-        fetch("/auth/upload", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // Envoyer le token JWT
-          },
-          body: JSON.stringify({ image: imageData }), // Envoyer l'image Base64 dans le body
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            console.log("Image sauvegardée avec succès :", data);
-            loadUserImages(); // Recharger la liste des images
-          })
-          .catch((error) => {
-            console.error("Erreur lors de la sauvegarde de l'image :", error);
-          });
-      });
-
-      // Charger les images de l'utilisateur
-      function loadUserImages() {
-        const token = localStorage.getItem("token");
-
-        fetch("/auth/user-images", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            imageList.innerHTML = ""; // Vider la liste avant de recharger
-
-            data.forEach((image) => {
-              const imgContainer = document.createElement("div");
-              const img = document.createElement("img");
-              img.src = image.image_path;
-              img.width = 200;
-
-              const deleteButton = document.createElement("button");
-              deleteButton.classList.add("delete-btn");
-              deleteButton.textContent = "Supprimer";
-
-              // Ajouter l'événement de suppression
-              deleteButton.addEventListener("click", () => {
-                deleteImage(image.id);
-              });
-
-              imgContainer.appendChild(img);
-              imgContainer.appendChild(deleteButton);
-              imageList.appendChild(imgContainer);
-            });
-          })
-          .catch((error) => {
-            console.error("Erreur lors de la récupération des images :", error);
-          });
-      }
-
-      // Supprimer une image
-      function deleteImage(imageId) {
-        const token = localStorage.getItem("token");
-
-        fetch(`/auth/delete-image/${imageId}`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            console.log("Image supprimée avec succès :", data);
-            loadUserImages(); // Recharger la liste des images après suppression
-          })
-          .catch((error) => {
-            console.error("Erreur lors de la suppression de l'image :", error);
-          });
-      }
-
-      // Charger les images de l'utilisateur au chargement de la page
-      window.onload = loadUserImages;
-    </script>
-  </body>
-</html>
--e
-
-==== ./src/public/gallery.html ====
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Galerie d'images</title>
-  </head>
-  <body>
-    <h1>Galerie d'images</h1>
-    <div id="gallery"></div>
-
-    <script>
-      // Charger les images et afficher les likes et les commentaires
-      fetch("/auth/images")
-        .then((response) => response.json())
-        .then((data) => {
-          const galleryDiv = document.getElementById("gallery");
-          data.forEach((image) => {
-            const imgContainer = document.createElement("div");
-            const img = document.createElement("img");
-            const likeButton = document.createElement("button");
-            const commentForm = document.createElement("form");
-            const commentInput = document.createElement("input");
-            const commentButton = document.createElement("button");
-            const commentSection = document.createElement("div");
-
-            img.src = image.image_path;
-            img.width = 200;
-
-            // Gestion des likes
-            likeButton.textContent = `Like (${image.likes || 0})`; // Affiche le nombre de likes
-            likeButton.addEventListener("click", () => {
-              // Envoyer une requête POST pour liker l'image
-              fetch(`/auth/like/${image.id}`, { method: "POST" })
-                .then((response) => response.json())
-                .then((data) => {
-                  likeButton.textContent = `Like (${data.likes})`; // Met à jour le nombre de likes
-                });
-            });
-
-            // Formulaire pour ajouter un commentaire
-            commentInput.placeholder = "Ajouter un commentaire...";
-            commentButton.textContent = "Envoyer";
-            commentButton.type = "submit";
-            commentForm.appendChild(commentInput);
-            commentForm.appendChild(commentButton);
-
-            // Gestion des commentaires : soumettre un commentaire
-            commentForm.addEventListener("submit", (e) => {
-              e.preventDefault();
-              const comment = commentInput.value;
-              if (comment) {
-                fetch(`/auth/comment/${image.id}`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ userId: 1, comment }), // Remplace `1` par l'ID de l'utilisateur connecté
-                })
-                  .then((response) => response.json())
-                  .then((data) => {
-                    console.log("Commentaire ajouté :", data);
-                    commentInput.value = ""; // Réinitialiser le champ de commentaire
-                    loadComments(image.id, commentSection); // Recharger les commentaires après ajout
-                  });
-              }
-            });
-
-            imgContainer.appendChild(img);
-            imgContainer.appendChild(likeButton);
-            imgContainer.appendChild(commentForm);
-            imgContainer.appendChild(commentSection);
-            galleryDiv.appendChild(imgContainer);
-
-            // Charger les commentaires pour cette image
-            loadComments(image.id, commentSection);
-          });
-        })
-        .catch((error) => {
-          console.error("Erreur lors de la récupération des images :", error);
-        });
-
-      // Fonction pour charger les commentaires d'une image
-      function loadComments(imageId, commentSection) {
-        commentSection.innerHTML = ""; // Effacer les anciens commentaires
-        fetch(`/auth/comments/${imageId}`)
-          .then((response) => response.json())
-          .then((comments) => {
-            comments.forEach((comment) => {
-              const commentDiv = document.createElement("div");
-              commentDiv.textContent = `${comment.email} : ${comment.comment} (le ${comment.created_at})`;
-              commentSection.appendChild(commentDiv);
-            });
-          })
-          .catch((error) => {
-            console.error(
-              "Erreur lors de la récupération des commentaires :",
-              error
-            );
-          });
-      }
-    </script>
-    <script src="/logout.js"></script>
-  </body>
-</html>
--e
-
-==== ./src/public/logout.js ====
-// Ajouter un bouton de déconnexion dynamiquement
-window.onload = function () {
-  const token = localStorage.getItem("token");
-
-  if (token) {
-    // Créer le bouton de déconnexion
-    const logoutBtn = document.createElement("button");
-    logoutBtn.innerText = "Déconnexion";
-    logoutBtn.classList.add(
-      "bg-red-600",
-      "text-white",
-      "p-2",
-      "rounded-md",
-      "hover:bg-red-700",
-      "fixed",
-      "top-4",
-      "right-4"
-    );
-
-    // Ajouter un listener au clic pour déconnexion
-    logoutBtn.addEventListener("click", function () {
-      localStorage.removeItem("token"); // Supprimer le token du localStorage
-      window.location.href = "/"; // Rediriger vers la page d'authentification
-    });
-
-    // Ajouter le bouton à la page (en haut à droite)
-    document.body.appendChild(logoutBtn);
-  }
-};
--e
-
 ==== ./src/routes/authRoutes.js ====
 const express = require("express");
 const router = express.Router();
@@ -637,6 +10,9 @@ router.post("/register", authController.register);
 // Route pour la connexion
 router.post("/login", authController.login);
 
+// Route pour la déconnexion
+router.post("/logout", authController.logout);
+
 // Route pour l'upload d'images (sécurisée avec JWT)
 router.post("/upload", verifyToken, authController.uploadImage);
 
@@ -644,20 +20,18 @@ router.post("/upload", verifyToken, authController.uploadImage);
 router.get("/images", authController.getImages);
 
 // Route pour liker une image
-router.post("/like/:imageId", authController.likeImage);
+router.post("/like/:imageId", verifyToken, authController.likeImage);
 
 // Route pour vérifier la validité du token
-router.post("/verify-token", verifyToken, (req, res) => {
-  res.status(200).json({ valid: true });
-});
+router.post("/verify-token", verifyToken, authController.verifyToken);
 
 // Route pour ajouter un commentaire
-router.post("/comment/:imageId", authController.addComment);
+router.post("/comment/:imageId", verifyToken, authController.addComment);
 
 // Route pour récupérer les commentaires d'une image
 router.get("/comments/:imageId", authController.getComments);
 
-// Nouvelle route pour lister les frames
+// Route pour lister les frames
 router.get("/frames", authController.getFrames);
 
 // Route pour récupérer les images de l'utilisateur
@@ -671,92 +45,58 @@ router.delete(
 );
 
 module.exports = router;
--e
+-e 
 
-==== ./src/app.js ====
-const express = require("express");
-const app = express();
-const port = process.env.PORT || 3000;
-const bodyParser = require("body-parser");
-const path = require("path");
+==== ./src/middleware/authMiddleware.js ====
+const jwt = require("jsonwebtoken");
+const db = require("../../config/database");
 
-// Importer la connexion à la base de données
-const db = require("../config/database");
+const verifyToken = (req, res, next) => {
+  const token = req.cookies.token; // Récupérer le token depuis le cookie
 
-// Importer le middleware JWT pour vérifier le token
-const verifyToken = require("./middleware/authMiddleware");
-
-// Middleware pour parser les requêtes POST
-app.use(bodyParser.json({ limit: "10mb" }));
-app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
-app.use("/frames", express.static(path.join(__dirname, "frames"))); // Calques (frames)
-app.use(express.static(path.join(__dirname, "public")));
-
-// Protéger l'accès à la page camera.html (aucun accès direct via /camera.html)
-app.get("/camera", (req, res, next) => {
-  // besoin de vérifier le token pour la galerie avec verifyToken en argument
-  const filePath = path.join(__dirname, "public/camera.html");
-  res.sendFile(filePath, (err) => {
-    if (err) {
-      if (!res.headersSent) {
-        return next(err); // Propager l'erreur s'il y a un problème
-      }
+  if (!token) {
+    if (req.accepts("html")) {
+      return res.redirect("/");
+    } else {
+      return res.status(403).json({ message: "Un token est requis." });
     }
-  });
-});
-
-// Protéger l'accès à la page camera.html (aucun accès direct via /camera.html)
-app.get("/gallery", (req, res, next) => {
-  // besoin de vérifier le token pour la galerie avec verifyToken en argument
-  const filePath = path.join(__dirname, "public/gallery.html");
-  res.sendFile(filePath, (err) => {
-    if (err) {
-      if (!res.headersSent) {
-        return next(err); // Propager l'erreur s'il y a un problème
-      }
-    }
-  });
-});
-
-// Routes d'authentification
-const authRoutes = require("./routes/authRoutes");
-app.use("/auth", authRoutes);
-
-// Route de test du serveur
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// Route basique pour tester si le serveur fonctionne
-
-// Route par défaut pour afficher la page d'authentification (register et login)
-app.get("/", (req, res) => {
-  const filePath = path.join(__dirname, "public/auth.html");
-  res.sendFile(filePath);
-});
-
-// Route de test de la base de données
-app.get("/test-db", (req, res) => {
-  db.query("SELECT 1 + 1 AS solution", (err, results) => {
-    if (err) {
-      res.status(500).send("Erreur avec la base de données");
-      return;
-    }
-    res.send(`La solution est : ${results[0].solution}`);
-  });
-});
-
-// Gestion globale des erreurs
-app.use((err, req, res, next) => {
-  if (res.headersSent) {
-    return next(err);
   }
-  res.status(500).send("Une erreur est survenue !");
-});
 
-// Démarrer le serveur
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
--e
+  // Vérifier le token JWT
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      if (req.accepts("html")) {
+        return res.redirect("/");
+      } else {
+        return res.status(401).json({ message: "Token invalide ou expiré." });
+      }
+    }
+
+    // Vérifier que l'utilisateur existe dans la base de données
+    const userId = decoded.id;
+    db.query("SELECT * FROM users WHERE id = ?", [userId], (err, result) => {
+      if (err) {
+        console.error("Erreur lors de la requête à la base de données :", err);
+        return res.status(500).send("Erreur du serveur.");
+      }
+
+      if (result.length === 0) {
+        if (req.accepts("html")) {
+          return res.redirect("/");
+        } else {
+          return res.status(404).json({ message: "Utilisateur non trouvé." });
+        }
+      }
+
+      // Utilisateur trouvé, continuer
+      req.userId = userId;
+      next();
+    });
+  });
+};
+
+module.exports = verifyToken;
+-e 
 
 ==== ./src/controllers/authController.js ====
 const bcrypt = require("bcrypt");
@@ -766,6 +106,17 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const sharp = require("sharp");
+
+// Fonction pour vérifier le token (utilisée par /verify-token)
+exports.verifyToken = (req, res) => {
+  res.status(200).json({ valid: true });
+};
+
+// Fonction de déconnexion (logout)
+exports.logout = (req, res) => {
+  res.clearCookie("token");
+  res.status(200).json({ message: "Déconnexion réussie" });
+};
 
 // Fonction d'inscription (register)
 exports.register = (req, res) => {
@@ -777,7 +128,7 @@ exports.register = (req, res) => {
       return res.status(500).send("Erreur du serveur");
     }
     if (result.length > 0) {
-      console.log("cet email est déjà utilisé");
+      console.log("Cet email est déjà utilisé");
       return res.status(400).send("Cet email est déjà utilisé.");
     }
 
@@ -802,7 +153,15 @@ exports.register = (req, res) => {
               expiresIn: "1h",
             }
           );
-          res.status(201).json({ token });
+
+          // Définir le token dans un cookie HTTP-only
+          res.cookie("token", token, {
+            httpOnly: true,
+            // secure: true, // À activer si vous utilisez HTTPS
+            maxAge: 3600000, // 1 heure en millisecondes
+          });
+
+          res.status(201).json({ message: "Inscription réussie" });
         }
       );
     });
@@ -833,7 +192,15 @@ exports.login = (req, res) => {
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
           expiresIn: "1h",
         });
-        res.json({ token });
+
+        // Définir le token dans un cookie HTTP-only
+        res.cookie("token", token, {
+          httpOnly: true,
+          // secure: true, // À activer si vous utilisez HTTPS
+          maxAge: 3600000, // 1 heure en millisecondes
+        });
+
+        res.json({ message: "Connexion réussie" });
       } else {
         res.status(400).send("Mot de passe incorrect");
       }
@@ -957,7 +324,8 @@ exports.likeImage = (req, res) => {
 
 // Fonction pour ajouter un commentaire
 exports.addComment = (req, res) => {
-  const { userId, comment } = req.body; // Récupérer le userId et le commentaire
+  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le middleware
+  const { comment } = req.body; // Récupérer le commentaire
   const imageId = req.params.imageId; // L'ID de l'image à commenter
 
   // Vérifier que le commentaire n'est pas vide
@@ -1040,7 +408,688 @@ exports.deleteImage = (req, res) => {
     }
   );
 };
--e
+-e 
+
+==== ./src/public/logout.js ====
+// Ajouter un bouton de déconnexion dynamiquement
+window.addEventListener("load", function () {
+  // Créer le bouton de déconnexion
+  const logoutBtn = document.createElement("button");
+  logoutBtn.innerText = "Déconnexion";
+  logoutBtn.classList.add(
+    "bg-red-600",
+    "text-white",
+    "p-2",
+    "rounded-md",
+    "hover:bg-red-700",
+    "fixed",
+    "top-4",
+    "right-4"
+  );
+
+  // Ajouter un listener au clic pour déconnexion
+  logoutBtn.addEventListener("click", function () {
+    fetch("/auth/logout", {
+      method: "POST",
+      credentials: "include", // Inclure les cookies
+    })
+      .then((response) => {
+        if (response.ok) {
+          window.location.href = "/"; // Rediriger vers la page d'accueil
+        } else {
+          throw new Error("Erreur lors de la déconnexion");
+        }
+      })
+      .catch((error) => {
+        console.error("Erreur lors de la déconnexion :", error);
+        window.location.href = "/";
+      });
+  });
+
+  // Ajouter le bouton à la page (en haut à droite)
+  document.body.appendChild(logoutBtn);
+});
+-e 
+
+==== ./src/public/camera.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camagru - Dashboard & Capture</title>
+    <style>
+      body {
+        display: grid;
+        grid-template-areas:
+          "header header"
+          "main side"
+          "footer footer";
+        grid-template-columns: 1fr 300px;
+        grid-template-rows: auto 1fr auto;
+        height: 100vh;
+        margin: 0;
+      }
+      header {
+        grid-area: header;
+        background-color: #333;
+        color: white;
+        padding: 1rem;
+        text-align: center;
+      }
+      main {
+        grid-area: main;
+        padding: 1rem;
+        background-color: #f4f4f4;
+      }
+      aside {
+        grid-area: side;
+        background-color: #f9f9f9;
+        padding: 1rem;
+        border-left: 1px solid #ddd;
+        overflow-y: auto;
+      }
+      footer {
+        grid-area: footer;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        padding: 1rem;
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+        margin-bottom: 10px;
+        display: block;
+      }
+      .delete-btn {
+        background-color: red;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+        margin-bottom: 20px;
+      }
+      #canvas {
+        border: 2px solid black;
+      }
+      #controls {
+        margin-top: 10px;
+      }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Dashboard</h1>
+    </header>
+
+    <main>
+      <h2>Capture de Photo avec la Webcam</h2>
+      <video id="video" width="640" height="480" autoplay></video>
+      <button id="capture">Capturer la photo</button>
+      <canvas id="canvas" width="640" height="480"></canvas>
+
+      <h3>Choisir un calque :</h3>
+      <select id="frame-select">
+        <option value="">Aucun calque</option>
+        <!-- Les calques seront chargés ici -->
+      </select>
+
+      <div id="controls">
+        <h3>Contrôles du filtre :</h3>
+        <label>Position X :</label>
+        <input type="range" id="posX" min="0" max="640" value="0" />
+        <label>Position Y :</label>
+        <input type="range" id="posY" min="0" max="480" value="0" />
+        <label>Taille :</label>
+        <input type="range" id="size" min="100" max="640" value="640" />
+      </div>
+
+      <button id="save" disabled>Sauvegarder la photo</button>
+    </main>
+
+    <aside>
+      <h2>Images enregistrées</h2>
+      <div id="image-list"></div>
+    </aside>
+
+    <footer>
+      <p>Camagru © 2024</p>
+    </footer>
+
+    <script>
+      // Vérifier le token à chaque chargement
+      window.addEventListener("load", function () {
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (!response.ok) {
+              window.location.href = "/"; // Rediriger si non authentifié
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la vérification du token :", err);
+            window.location.href = "/";
+          });
+      });
+
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+      const context = canvas.getContext("2d");
+      const captureButton = document.getElementById("capture");
+      const saveButton = document.getElementById("save");
+      const frameSelect = document.getElementById("frame-select");
+      const posXSlider = document.getElementById("posX");
+      const posYSlider = document.getElementById("posY");
+      const sizeSlider = document.getElementById("size");
+      const imageList = document.getElementById("image-list");
+
+      let capturedImage = null; // Stocker l'image capturée pour réutilisation
+
+      // Charger dynamiquement les frames depuis le serveur
+      window.addEventListener("load", function () {
+        fetch("/auth/frames", {
+          credentials: "include",
+        })
+          .then((response) => response.json())
+          .then((frames) => {
+            frames.forEach((frame) => {
+              const option = document.createElement("option");
+              option.value = frame;
+              option.textContent = frame.replace(".png", ""); // Afficher sans l'extension
+              frameSelect.appendChild(option);
+            });
+          })
+          .catch((err) =>
+            console.error("Erreur lors du chargement des frames :", err)
+          );
+      });
+
+      // Accéder à la webcam
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((stream) => {
+          video.srcObject = stream;
+        })
+        .catch((err) => {
+          console.error("Erreur lors de l'accès à la webcam:", err);
+        });
+
+      // Capturer l'image via la webcam
+      captureButton.addEventListener("click", () => {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        capturedImage = context.getImageData(0, 0, canvas.width, canvas.height); // Stocker l'image capturée
+        saveButton.disabled = false; // Activer le bouton de sauvegarde après la capture
+        applyFilter(); // Appliquer le filtre par défaut
+      });
+
+      // Appliquer un filtre dynamique sur l'image capturée
+      frameSelect.addEventListener("change", applyFilter);
+      posXSlider.addEventListener("input", applyFilter);
+      posYSlider.addEventListener("input", applyFilter);
+      sizeSlider.addEventListener("input", applyFilter);
+
+      function applyFilter() {
+        if (!capturedImage) return; // Si aucune image n'a été capturée, on ne fait rien
+
+        // Restaurer l'image capturée
+        context.putImageData(capturedImage, 0, 0);
+
+        const selectedFrame = frameSelect.value;
+        if (selectedFrame) {
+          const frameImage = new Image();
+          frameImage.src = `/frames/${selectedFrame}`; // Charger le calque sélectionné
+
+          frameImage.onload = () => {
+            const posX = parseInt(posXSlider.value);
+            const posY = parseInt(posYSlider.value);
+            const size = parseInt(sizeSlider.value);
+
+            // Dessiner le filtre à la position et avec la taille choisie
+            context.drawImage(frameImage, posX, posY, size, size);
+          };
+        }
+      }
+
+      // Sauvegarder l'image avec le calque appliqué
+      saveButton.addEventListener("click", () => {
+        if (!capturedImage) return; // Vérifier qu'une image a bien été capturée avant de sauvegarder
+
+        const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en image Base64
+
+        fetch("/auth/upload", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Inclure les cookies
+          body: JSON.stringify({ image: imageData }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Image sauvegardée avec succès :", data);
+            loadUserImages(); // Recharger la liste des images
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la sauvegarde de l'image :", error);
+          });
+      });
+
+      // Charger les images de l'utilisateur
+      function loadUserImages() {
+        fetch("/auth/user-images", {
+          method: "GET",
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            imageList.innerHTML = ""; // Vider la liste avant de recharger
+
+            data.forEach((image) => {
+              const imgContainer = document.createElement("div");
+              const img = document.createElement("img");
+              img.src = image.image_path;
+              img.width = 200;
+
+              const deleteButton = document.createElement("button");
+              deleteButton.classList.add("delete-btn");
+              deleteButton.textContent = "Supprimer";
+
+              // Ajouter l'événement de suppression
+              deleteButton.addEventListener("click", () => {
+                deleteImage(image.id);
+              });
+
+              imgContainer.appendChild(img);
+              imgContainer.appendChild(deleteButton);
+              imageList.appendChild(imgContainer);
+            });
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la récupération des images :", error);
+          });
+      }
+
+      // Supprimer une image
+      function deleteImage(imageId) {
+        fetch(`/auth/delete-image/${imageId}`, {
+          method: "DELETE",
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Image supprimée avec succès :", data);
+            loadUserImages(); // Recharger la liste des images après suppression
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la suppression de l'image :", error);
+          });
+      }
+
+      // Charger les images de l'utilisateur au chargement de la page
+      window.addEventListener("load", loadUserImages);
+    </script>
+    <script src="/logout.js"></script>
+  </body>
+</html>
+-e 
+
+==== ./src/public/auth.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camagru - Authentification</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+      <h1 class="text-2xl font-bold text-center text-gray-800 mb-8">
+        Bienvenue sur Camagru
+      </h1>
+
+      <!-- Formulaire d'inscription -->
+      <div class="mb-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Inscription</h2>
+        <form id="registerForm" class="space-y-4">
+          <div>
+            <label
+              for="registerEmail"
+              class="block text-sm font-medium text-gray-700"
+              >Email</label
+            >
+            <input
+              type="email"
+              id="registerEmail"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="registerUsername"
+              class="block text-sm font-medium text-gray-700"
+              >Nom d'utilisateur</label
+            >
+            <input
+              type="text"
+              id="registerUsername"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="registerPassword"
+              class="block text-sm font-medium text-gray-700"
+              >Mot de passe</label
+            >
+            <input
+              type="password"
+              id="registerPassword"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700"
+          >
+            S'inscrire
+          </button>
+        </form>
+      </div>
+
+      <!-- Formulaire de connexion -->
+      <div class="mt-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Connexion</h2>
+        <form id="loginForm" class="space-y-4">
+          <div>
+            <label
+              for="loginEmail"
+              class="block text-sm font-medium text-gray-700"
+              >Email</label
+            >
+            <input
+              type="email"
+              id="loginEmail"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="loginPassword"
+              class="block text-sm font-medium text-gray-700"
+              >Mot de passe</label
+            >
+            <input
+              type="password"
+              id="loginPassword"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-green-600 text-white p-2 rounded-md hover:bg-green-700"
+          >
+            Se connecter
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // Vérifier si l'utilisateur est déjà authentifié
+      window.addEventListener("load", function () {
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Utilisateur non authentifié.");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.valid) {
+              window.location.href = "/camera";
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la vérification du token", err);
+          });
+      });
+
+      // Inscription
+      document
+        .getElementById("registerForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const email = document.getElementById("registerEmail").value;
+          const username = document.getElementById("registerUsername").value;
+          const password = document.getElementById("registerPassword").value;
+
+          fetch("/auth/register", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email, username, password }),
+            credentials: "include", // Inclure les cookies
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Erreur lors de l'inscription");
+              }
+              return response.json();
+            })
+            .then((data) => {
+              window.location.href = "/camera"; // Rediriger vers la page caméra
+            })
+            .catch((error) => {
+              console.error("Erreur lors de l'inscription:", error);
+              alert("Erreur lors de l'inscription. Veuillez réessayer.");
+            });
+        });
+
+      // Connexion
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const email = document.getElementById("loginEmail").value;
+          const password = document.getElementById("loginPassword").value;
+
+          fetch("/auth/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email, password }),
+            credentials: "include", // Inclure les cookies
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Erreur lors de la connexion");
+              }
+              return response.json();
+            })
+            .then((data) => {
+              window.location.href = "/camera"; // Rediriger vers la page caméra
+            })
+            .catch((error) => {
+              console.error("Erreur lors de la connexion:", error);
+              alert(
+                "Erreur lors de la connexion. Veuillez vérifier vos identifiants."
+              );
+            });
+        });
+    </script>
+  </body>
+</html>
+-e 
+
+==== ./src/public/gallery.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Galerie d'images</title>
+  </head>
+  <body>
+    <h1>Galerie d'images</h1>
+    <div id="gallery"></div>
+
+    <script>
+      // Vérification du token au chargement
+      window.addEventListener("load", function () {
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (!response.ok) {
+              window.location.href = "/";
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la vérification du token :", err);
+            window.location.href = "/";
+          });
+      });
+
+      // Récupérer les images et afficher la galerie
+      fetch("/auth/images", {
+        credentials: "include", // Inclure les cookies
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          const galleryDiv = document.getElementById("gallery");
+
+          data.forEach((image) => {
+            const imgContainer = document.createElement("div");
+            const img = document.createElement("img");
+            const likeButton = document.createElement("button");
+            const commentForm = document.createElement("form");
+            const commentInput = document.createElement("input");
+            const commentButton = document.createElement("button");
+            const commentSection = document.createElement("div");
+
+            img.src = image.image_path;
+            img.width = 200;
+
+            likeButton.textContent = `Like (${image.likes || 0})`;
+            likeButton.addEventListener("click", () => {
+              fetch(`/auth/like/${image.id}`, {
+                method: "POST",
+                credentials: "include", // Inclure les cookies
+              })
+                .then((response) => response.json())
+                .then((data) => {
+                  likeButton.textContent = `Like (${data.likes})`;
+                });
+            });
+
+            // Formulaire pour ajouter un commentaire
+            commentInput.placeholder = "Ajouter un commentaire...";
+            commentButton.textContent = "Envoyer";
+            commentButton.type = "submit";
+            commentForm.appendChild(commentInput);
+            commentForm.appendChild(commentButton);
+
+            // Gestion des commentaires : soumettre un commentaire
+            commentForm.addEventListener("submit", (e) => {
+              e.preventDefault();
+              const comment = commentInput.value;
+              if (comment) {
+                fetch(`/auth/comment/${image.id}`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  credentials: "include", // Inclure les cookies
+                  body: JSON.stringify({ comment }),
+                })
+                  .then((response) => {
+                    if (!response.ok) {
+                      throw new Error("Erreur lors de l'ajout du commentaire");
+                    }
+                    return response.json();
+                  })
+                  .then((data) => {
+                    console.log("Commentaire ajouté :", data);
+                    commentInput.value = ""; // Réinitialiser le champ de commentaire
+                    loadComments(image.id, commentSection); // Recharger les commentaires après ajout
+                  })
+                  .catch((error) => {
+                    console.error(
+                      "Erreur lors de l'ajout du commentaire :",
+                      error
+                    );
+                  });
+              }
+            });
+
+            imgContainer.appendChild(img);
+            imgContainer.appendChild(likeButton);
+            imgContainer.appendChild(commentForm);
+            imgContainer.appendChild(commentSection);
+            galleryDiv.appendChild(imgContainer);
+
+            // Charger les commentaires pour cette image
+            loadComments(image.id, commentSection);
+          });
+        })
+        .catch((error) => {
+          console.error("Erreur lors de la récupération des images :", error);
+        });
+
+      // Fonction pour charger les commentaires d'une image
+      function loadComments(imageId, commentSection) {
+        commentSection.innerHTML = ""; // Effacer les anciens commentaires
+        fetch(`/auth/comments/${imageId}`, {
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((comments) => {
+            comments.forEach((comment) => {
+              const commentDiv = document.createElement("div");
+              commentDiv.textContent = `${comment.email} : ${comment.comment} (le ${comment.created_at})`;
+              commentSection.appendChild(commentDiv);
+            });
+          })
+          .catch((error) => {
+            console.error(
+              "Erreur lors de la récupération des commentaires :",
+              error
+            );
+          });
+      }
+    </script>
+    <script src="/logout.js"></script>
+  </body>
+</html>
+-e 
 
 ==== ./src/models/User.js ====
 const db = require("../../config/database");
@@ -1089,4 +1138,88 @@ module.exports = {
   createUser,
   comparePassword,
 };
--e
+-e 
+
+==== ./src/app.js ====
+const express = require("express");
+const app = express();
+const port = process.env.PORT || 3000;
+const bodyParser = require("body-parser");
+const path = require("path");
+const cookieParser = require("cookie-parser"); // Importer cookie-parser
+
+// Importer la connexion à la base de données
+const db = require("../config/database");
+
+// Importer le middleware JWT pour vérifier le token
+const verifyToken = require("./middleware/authMiddleware");
+
+// Middleware pour parser les requêtes POST
+app.use(bodyParser.json({ limit: "10mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
+app.use(cookieParser()); // Utiliser cookie-parser
+app.use("/frames", express.static(path.join(__dirname, "frames"))); // Calques (frames)
+app.use(express.static(path.join(__dirname, "public")));
+
+// Protéger l'accès à la page camera.html (aucun accès direct via /camera.html)
+app.get("/camera", verifyToken, (req, res, next) => {
+  const filePath = path.join(__dirname, "public/camera.html");
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (!res.headersSent) {
+        return next(err); // Propager l'erreur s'il y a un problème
+      }
+    }
+  });
+});
+
+// Protéger l'accès à la page gallery.html (aucun accès direct via /gallery.html)
+app.get("/gallery", verifyToken, (req, res, next) => {
+  const filePath = path.join(__dirname, "public/gallery.html");
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (!res.headersSent) {
+        return next(err); // Propager l'erreur s'il y a un problème
+      }
+    }
+  });
+});
+
+// Routes d'authentification
+const authRoutes = require("./routes/authRoutes");
+app.use("/auth", authRoutes);
+
+// Route pour les uploads d'images
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Route par défaut pour afficher la page d'authentification (register et login)
+app.get("/", (req, res) => {
+  const filePath = path.join(__dirname, "public/auth.html");
+  res.sendFile(filePath);
+});
+
+// Route de test de la base de données
+app.get("/test-db", (req, res) => {
+  db.query("SELECT 1 + 1 AS solution", (err, results) => {
+    if (err) {
+      res.status(500).send("Erreur avec la base de données");
+      return;
+    }
+    res.send(`La solution est : ${results[0].solution}`);
+  });
+});
+
+// Gestion globale des erreurs
+app.use((err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(500).send("Une erreur est survenue !");
+});
+
+// Démarrer le serveur
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+-e 
+

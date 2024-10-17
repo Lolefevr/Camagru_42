@@ -105,35 +105,30 @@
     </div>
 
     <script>
-      // Vérifier si un token existe déjà
-      window.onload = function () {
-        const token = localStorage.getItem("token");
-        if (token) {
-          // Vérifier si le token est encore valide et si l'utilisateur existe
-          fetch("/auth/verify-token", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
+      // Vérifier si l'utilisateur est déjà authentifié
+      window.addEventListener("load", function () {
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Utilisateur non authentifié.");
+            }
+            return response.json();
           })
-            .then((response) => {
-              if (!response.ok) {
-                localStorage.removeItem("token");
-                throw new Error("Utilisateur non trouvé.");
-              }
-              return response.json();
-            })
-            .then((data) => {
-              if (data.valid) {
-                window.location.href = "/camera";
-              }
-            })
-            .catch((err) =>
-              console.error("Erreur lors de la vérification du token", err)
-            );
-        }
-      };
+          .then((data) => {
+            if (data.valid) {
+              window.location.href = "/camera";
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la vérification du token", err);
+          });
+      });
 
       // Inscription
       document
@@ -150,14 +145,21 @@
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ email, username, password }),
+            credentials: "include", // Inclure les cookies
           })
-            .then((response) => response.json())
-            .then((data) => {
-              alert("Inscription réussie");
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Erreur lors de l'inscription");
+              }
+              return response.json();
             })
-            .catch((error) =>
-              console.error("Erreur lors de l'inscription:", error)
-            );
+            .then((data) => {
+              window.location.href = "/camera"; // Rediriger vers la page caméra
+            })
+            .catch((error) => {
+              console.error("Erreur lors de l'inscription:", error);
+              alert("Erreur lors de l'inscription. Veuillez réessayer.");
+            });
         });
 
       // Connexion
@@ -174,17 +176,24 @@
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ email, password }),
+            credentials: "include", // Inclure les cookies
           })
-            .then((response) => response.json())
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Erreur lors de la connexion");
+              }
+              return response.json();
+            })
             .then((data) => {
-              localStorage.setItem("token", data.token); // Stocker le token dans localStorage
               window.location.href = "/camera"; // Rediriger vers la page caméra
             })
-            .catch((error) =>
-              console.error("Erreur lors de la connexion:", error)
-            );
+            .catch((error) => {
+              console.error("Erreur lors de la connexion:", error);
+              alert(
+                "Erreur lors de la connexion. Veuillez vérifier vos identifiants."
+              );
+            });
         });
     </script>
-    <script src="/logout.js"></script>
   </body>
 </html>

@@ -6,6 +6,17 @@ const path = require("path");
 const fs = require("fs");
 const sharp = require("sharp");
 
+// Fonction pour vérifier le token (utilisée par /verify-token)
+exports.verifyToken = (req, res) => {
+  res.status(200).json({ valid: true });
+};
+
+// Fonction de déconnexion (logout)
+exports.logout = (req, res) => {
+  res.clearCookie("token");
+  res.status(200).json({ message: "Déconnexion réussie" });
+};
+
 // Fonction d'inscription (register)
 exports.register = (req, res) => {
   const { email, password } = req.body;
@@ -16,7 +27,7 @@ exports.register = (req, res) => {
       return res.status(500).send("Erreur du serveur");
     }
     if (result.length > 0) {
-      console.log("cet email est déjà utilisé");
+      console.log("Cet email est déjà utilisé");
       return res.status(400).send("Cet email est déjà utilisé.");
     }
 
@@ -41,7 +52,15 @@ exports.register = (req, res) => {
               expiresIn: "1h",
             }
           );
-          res.status(201).json({ token });
+
+          // Définir le token dans un cookie HTTP-only
+          res.cookie("token", token, {
+            httpOnly: true,
+            // secure: true, // À activer si vous utilisez HTTPS
+            maxAge: 3600000, // 1 heure en millisecondes
+          });
+
+          res.status(201).json({ message: "Inscription réussie" });
         }
       );
     });
@@ -72,7 +91,15 @@ exports.login = (req, res) => {
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
           expiresIn: "1h",
         });
-        res.json({ token });
+
+        // Définir le token dans un cookie HTTP-only
+        res.cookie("token", token, {
+          httpOnly: true,
+          // secure: true, // À activer si vous utilisez HTTPS
+          maxAge: 3600000, // 1 heure en millisecondes
+        });
+
+        res.json({ message: "Connexion réussie" });
       } else {
         res.status(400).send("Mot de passe incorrect");
       }
@@ -196,7 +223,8 @@ exports.likeImage = (req, res) => {
 
 // Fonction pour ajouter un commentaire
 exports.addComment = (req, res) => {
-  const { userId, comment } = req.body; // Récupérer le userId et le commentaire
+  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le middleware
+  const { comment } = req.body; // Récupérer le commentaire
   const imageId = req.params.imageId; // L'ID de l'image à commenter
 
   // Vérifier que le commentaire n'est pas vide
