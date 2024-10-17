@@ -112,26 +112,6 @@
     </footer>
 
     <script>
-      // Vérifier le token à chaque chargement
-      window.addEventListener("load", function () {
-        fetch("/auth/verify-token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include", // Inclure les cookies
-        })
-          .then((response) => {
-            if (!response.ok) {
-              window.location.href = "/"; // Rediriger si non authentifié
-            }
-          })
-          .catch((err) => {
-            console.error("Erreur lors de la vérification du token :", err);
-            window.location.href = "/";
-          });
-      });
-
       const video = document.getElementById("video");
       const canvas = document.getElementById("canvas");
       const context = canvas.getContext("2d");
@@ -151,7 +131,6 @@
       window.addEventListener("load", function () {
         fetch("/auth/frames", {
           credentials: "include",
-
         })
           .then((response) => response.json())
           .then((frames) => {
@@ -181,7 +160,8 @@
       captureButton.addEventListener("click", () => {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         capturedImage = context.getImageData(0, 0, canvas.width, canvas.height);
-        saveButton.disabled = false;
+        uploadedImage = null; // Annuler l'image uploadée si une photo est prise
+        saveButton.disabled = false; // Activer le bouton de sauvegarde
         applyFilter();
       });
 
@@ -192,9 +172,13 @@
       sizeSlider.addEventListener("input", applyFilter);
 
       function applyFilter() {
-        if (!capturedImage) return;
-
-        context.putImageData(capturedImage, 0, 0);
+        // Si une image uploadée existe, elle a la priorité
+        if (uploadedImage) {
+          context.clearRect(0, 0, canvas.width, canvas.height); // Effacer le canvas
+          context.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+        } else if (capturedImage) {
+          context.putImageData(capturedImage, 0, 0);
+        }
 
         const selectedFrame = frameSelect.value;
         if (selectedFrame) {
@@ -207,20 +191,35 @@
             context.drawImage(frameImage, posX, posY, size, size);
           };
         }
-
-        if (uploadedImage) {
-          const posX = parseInt(posXSlider.value);
-          const posY = parseInt(posYSlider.value);
-          const size = parseInt(sizeSlider.value);
-          context.drawImage(uploadedImage, posX, posY, size, size);
-        }
       }
+
+      // Gérer le chargement d'une image depuis le PC
+      imageUpload.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function (event) {
+          uploadedImage = new Image();
+          uploadedImage.src = event.target.result;
+
+          uploadedImage.onload = function () {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+            capturedImage = null; // Désactiver l'image capturée par la webcam si une image est uploadée
+            saveButton.disabled = false; // Activer le bouton de sauvegarde
+            applyFilter();
+          };
+        };
+
+        if (file) {
+          reader.readAsDataURL(file);
+        }
+      });
 
       // Sauvegarder l'image
       saveButton.addEventListener("click", () => {
-        if (!capturedImage) return;
-
-// Convertir le canvas en image Base64
+        // Vérifier qu'une image existe (soit capturée par webcam, soit uploadée)
+        if (!capturedImage && !uploadedImage) return;
 
         const token = localStorage.getItem("token");
         const imageData = canvas.toDataURL("image/png");
@@ -229,12 +228,9 @@
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-          },
-          credentials: "include", // Inclure les cookies
-
             Authorization: `Bearer ${token}`,
           },
-
+          credentials: "include", // Inclure les cookies
           body: JSON.stringify({ image: imageData }),
         })
           .then((response) => response.json())
@@ -296,22 +292,6 @@
           });
       }
 
-      // Supprimer une image
-      function deleteImage(imageId) {
-        fetch(`/auth/delete-image/${imageId}`, {
-          method: "DELETE",
-          credentials: "include", // Inclure les cookies
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            console.log("Image supprimée avec succès :", data);
-            loadUserImages();
-          })
-          .catch((error) => {
-            console.error("Erreur lors de la suppression de l'image :", error);
-          });
-      }
-
       // Charger les images de l'utilisateur au chargement de la page
       window.addEventListener("load", loadUserImages);
 
@@ -340,6 +320,22 @@
           ); // Stocker l'image
           saveButton.disabled = false; // Activer le bouton de sauvegarde
         };
+      }
+
+      // Supprimer une image
+      function deleteImage(imageId) {
+        fetch(`/auth/delete-image/${imageId}`, {
+          method: "DELETE",
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Image supprimée avec succès :", data);
+            loadUserImages(); // Recharger la liste des images après suppression
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la suppression de l'image :", error);
+          });
       }
 
       window.onload = loadUserImages;
