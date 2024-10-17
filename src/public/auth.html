@@ -105,30 +105,32 @@
     </div>
 
     <script>
-      // Inscription
-      window.onload = function () {
-        const token = localStorage.getItem("token");
-        if (token) {
-          // Vérifier si le token est encore valide
-          fetch("/auth/verify-token", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
+      // Vérifier si l'utilisateur est déjà authentifié
+      window.addEventListener("load", function () {
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Utilisateur non authentifié.");
+            }
+            return response.json();
           })
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.valid) {
-                // Si le token est valide, rediriger vers la page caméra
-                window.location.href = "/camera";
-              }
-            })
-            .catch((err) =>
-              console.error("Erreur lors de la vérification du token", err)
-            );
-        }
-      };
+          .then((data) => {
+            if (data.valid) {
+              window.location.href = "/camera";
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la vérification du token", err);
+          });
+      });
+
+      // Inscription
       document
         .getElementById("registerForm")
         .addEventListener("submit", function (e) {
@@ -143,15 +145,21 @@
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ email, username, password }),
+            credentials: "include", // Inclure les cookies
           })
-            .then((response) => response.json())
-            .then((data) => {
-              console.log(data);
-              alert("Inscription réussie");
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Erreur lors de l'inscription");
+              }
+              return response.json();
             })
-            .catch((error) =>
-              console.error("Erreur lors de l'inscription:", error)
-            );
+            .then((data) => {
+              window.location.href = "/camera"; // Rediriger vers la page caméra
+            })
+            .catch((error) => {
+              console.error("Erreur lors de l'inscription:", error);
+              alert("Erreur lors de l'inscription. Veuillez réessayer.");
+            });
         });
 
       // Connexion
@@ -168,18 +176,23 @@
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ email, password }),
+            credentials: "include", // Inclure les cookies
           })
-            .then((response) => response.json())
-            .then((data) => {
-              console.log(data);
-              localStorage.setItem("token", data.token); // Stocker le token dans localStorage
-              console.log("Token: ", data.token);
-              window.location.href = "/camera"; // Rediriger vers la page caméra
-              alert("Connexion réussie");
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Erreur lors de la connexion");
+              }
+              return response.json();
             })
-            .catch((error) =>
-              console.error("Erreur lors de la connexion:", error)
-            );
+            .then((data) => {
+              window.location.href = "/camera"; // Rediriger vers la page caméra
+            })
+            .catch((error) => {
+              console.error("Erreur lors de la connexion:", error);
+              alert(
+                "Erreur lors de la connexion. Veuillez vérifier vos identifiants."
+              );
+            });
         });
     </script>
   </body>

@@ -112,6 +112,26 @@
     </footer>
 
     <script>
+      // Vérifier le token à chaque chargement
+      window.addEventListener("load", function () {
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (!response.ok) {
+              window.location.href = "/"; // Rediriger si non authentifié
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la vérification du token :", err);
+            window.location.href = "/";
+          });
+      });
+
       const video = document.getElementById("video");
       const canvas = document.getElementById("canvas");
       const context = canvas.getContext("2d");
@@ -128,19 +148,24 @@
       let uploadedImage = null;
 
       // Charger dynamiquement les frames depuis le serveur
-      fetch("/auth/frames")
-        .then((response) => response.json())
-        .then((frames) => {
-          frames.forEach((frame) => {
-            const option = document.createElement("option");
-            option.value = frame;
-            option.textContent = frame.replace(".png", "");
-            frameSelect.appendChild(option);
-          });
+      window.addEventListener("load", function () {
+        fetch("/auth/frames", {
+          credentials: "include",
+
         })
-        .catch((err) =>
-          console.error("Erreur lors du chargement des frames :", err)
-        );
+          .then((response) => response.json())
+          .then((frames) => {
+            frames.forEach((frame) => {
+              const option = document.createElement("option");
+              option.value = frame;
+              option.textContent = frame.replace(".png", ""); // Afficher sans l'extension
+              frameSelect.appendChild(option);
+            });
+          })
+          .catch((err) =>
+            console.error("Erreur lors du chargement des frames :", err)
+          );
+      });
 
       // Accéder à la webcam
       navigator.mediaDevices
@@ -195,6 +220,8 @@
       saveButton.addEventListener("click", () => {
         if (!capturedImage) return;
 
+// Convertir le canvas en image Base64
+
         const token = localStorage.getItem("token");
         const imageData = canvas.toDataURL("image/png");
 
@@ -202,8 +229,12 @@
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+          },
+          credentials: "include", // Inclure les cookies
+
             Authorization: `Bearer ${token}`,
           },
+
           body: JSON.stringify({ image: imageData }),
         })
           .then((response) => response.json())
@@ -218,13 +249,9 @@
 
       // Charger les images de l'utilisateur
       function loadUserImages() {
-        const token = localStorage.getItem("token");
-
         fetch("/auth/user-images", {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: "include", // Inclure les cookies
         })
           .then((response) => response.json())
           .then((data) => {
@@ -271,13 +298,9 @@
 
       // Supprimer une image
       function deleteImage(imageId) {
-        const token = localStorage.getItem("token");
-
         fetch(`/auth/delete-image/${imageId}`, {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: "include", // Inclure les cookies
         })
           .then((response) => response.json())
           .then((data) => {
@@ -288,6 +311,9 @@
             console.error("Erreur lors de la suppression de l'image :", error);
           });
       }
+
+      // Charger les images de l'utilisateur au chargement de la page
+      window.addEventListener("load", loadUserImages);
 
       // Exporter l'image en PNG
       function exportImage(imagePath) {
@@ -318,5 +344,6 @@
 
       window.onload = loadUserImages;
     </script>
+    <script src="/logout.js"></script>
   </body>
 </html>

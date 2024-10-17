@@ -1,49 +1,32 @@
-# # Utiliser l'image Node.js
-# FROM node:20
+# Utiliser l'image officielle Node.js 21
+FROM node:21
 
-# # Installer apt-utils et netcat pour que wait-for-it fonctionne
-# RUN apt-get update && apt-get install -y apt-utils netcat-openbsd
+# Installer les dépendances système pour 'sharp'
+RUN apt-get update && apt-get install -y \
+    libvips-dev \
+    build-essential \
+    python3 \
+    make \
+    g++ \
+	netcat-openbsd
 
-# # Définir le répertoire de travail dans le conteneur
-# WORKDIR /app
-
-# # Copier les fichiers package.json et package-lock.json (si présent) pour installer les dépendances
-# COPY package*.json ./
-
-# # Installer les dépendances npm
-# RUN npm install
-
-# # Copier tout le reste des fichiers du projet
-# COPY . .
-
-# # Exposer le port 3000
-# EXPOSE 3000
-
-# # Démarrer l'application
-# CMD ["npm", "run", "dev"]
-
-
-
-
-FROM node:20
-
-# Installer apt-utils et netcat pour que wait-for-it fonctionne
-RUN apt-get update && apt-get install -y apt-utils netcat-openbsd
-
-# Définir le répertoire de travail dans le conteneur
+# Définir le répertoire de travail
 WORKDIR /app
 
-# Copier package.json et package-lock.json si présent
+# Copier package.json et package-lock.json
 COPY package*.json ./
 
-# Forcer une installation propre sans utiliser le cache
-RUN npm ci
+# Installer les dépendances Node.js
+RUN npm install
 
-# Copier tout le reste des fichiers
+# Copier le reste du code de votre application
 COPY . .
 
-# Exposer le port 3000
+# Exposer le port de l'application
 EXPOSE 3000
 
 # Démarrer l'application
 CMD ["npm", "run", "dev"]
+
+
+
