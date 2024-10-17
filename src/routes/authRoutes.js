@@ -32,4 +32,14 @@ router.get("/comments/:imageId", authController.getComments);
 // Nouvelle route pour lister les frames
 router.get("/frames", authController.getFrames);
 
+// Route pour récupérer les images de l'utilisateur
+router.get("/user-images", verifyToken, authController.getUserImages);
+
+// Route pour supprimer une image
+router.delete(
+  "/delete-image/:imageId",
+  verifyToken,
+  authController.deleteImage
+);
+
 module.exports = router;

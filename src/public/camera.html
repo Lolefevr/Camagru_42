@@ -3,28 +3,109 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Camagru - Capture Webcam avec Calque</title>
+    <title>Camagru - Dashboard & Capture</title>
     <style>
+      body {
+        display: grid;
+        grid-template-areas:
+          "header header"
+          "main side"
+          "footer footer";
+        grid-template-columns: 1fr 300px;
+        grid-template-rows: auto 1fr auto;
+        height: 100vh;
+        margin: 0;
+      }
+      header {
+        grid-area: header;
+        background-color: #333;
+        color: white;
+        padding: 1rem;
+        text-align: center;
+      }
+      main {
+        grid-area: main;
+        padding: 1rem;
+        background-color: #f4f4f4;
+      }
+      aside {
+        grid-area: side;
+        background-color: #f9f9f9;
+        padding: 1rem;
+        border-left: 1px solid #ddd;
+        overflow-y: auto;
+      }
+      footer {
+        grid-area: footer;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        padding: 1rem;
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+        margin-bottom: 10px;
+        display: block;
+      }
+      .delete-btn {
+        background-color: red;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+        margin-bottom: 20px;
+      }
       #canvas {
         border: 2px solid black;
+      }
+      #controls {
+        margin-top: 10px;
+      }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
       }
     </style>
   </head>
   <body>
-    <h1>Prendre une photo avec votre webcam et ajouter un calque</h1>
+    <header>
+      <h1>Dashboard</h1>
+    </header>
 
-    <!-- Video webcam -->
-    <video id="video" width="640" height="480" autoplay></video>
-    <button id="capture">Capturer la photo</button>
-    <canvas id="canvas" width="640" height="480"></canvas>
+    <main>
+      <h2>Capture de Photo avec la Webcam</h2>
+      <video id="video" width="640" height="480" autoplay></video>
+      <button id="capture">Capturer la photo</button>
+      <canvas id="canvas" width="640" height="480"></canvas>
 
-    <h3>Choisir un calque :</h3>
-    <select id="frame-select">
-      <option value="">Aucun calque</option>
-      <!-- Les calques seront chargés ici -->
-    </select>
+      <h3>Choisir un calque :</h3>
+      <select id="frame-select">
+        <option value="">Aucun calque</option>
+        <!-- Les calques seront chargés ici -->
+      </select>
 
-    <button id="save">Sauvegarder la photo</button>
+      <div id="controls">
+        <h3>Contrôles du filtre :</h3>
+        <label>Position X :</label>
+        <input type="range" id="posX" min="0" max="640" value="0" />
+        <label>Position Y :</label>
+        <input type="range" id="posY" min="0" max="480" value="0" />
+        <label>Taille :</label>
+        <input type="range" id="size" min="100" max="640" value="640" />
+      </div>
+
+      <button id="save" disabled>Sauvegarder la photo</button>
+    </main>
+
+    <aside>
+      <h2>Images enregistrées</h2>
+      <div id="image-list"></div>
+    </aside>
+
+    <footer>
+      <p>Camagru © 2024</p>
+    </footer>
 
     <script>
       // Vérifier le token à chaque chargement
@@ -60,12 +141,17 @@
       const captureButton = document.getElementById("capture");
       const saveButton = document.getElementById("save");
       const frameSelect = document.getElementById("frame-select");
+      const posXSlider = document.getElementById("posX");
+      const posYSlider = document.getElementById("posY");
+      const sizeSlider = document.getElementById("size");
+      const imageList = document.getElementById("image-list");
+
+      let capturedImage = null; // Stocker l'image capturée pour réutilisation
 
       // Charger dynamiquement les frames depuis le serveur
       fetch("/auth/frames")
         .then((response) => response.json())
         .then((frames) => {
-          // Remplir le dropdown avec les frames disponibles
           frames.forEach((frame) => {
             const option = document.createElement("option");
             option.value = frame;
@@ -87,26 +173,48 @@
           console.error("Erreur lors de l'accès à la webcam:", err);
         });
 
-      // Capturer l'image via la webcam et dessiner dans le canvas
+      // Capturer l'image via la webcam
       captureButton.addEventListener("click", () => {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        capturedImage = context.getImageData(0, 0, canvas.width, canvas.height); // Stocker l'image capturée
+        saveButton.disabled = false; // Activer le bouton de sauvegarde après la capture
+        applyFilter(); // Appliquer le filtre par défaut
+      });
+
+      // Appliquer un filtre dynamique sur l'image capturée
+      frameSelect.addEventListener("change", applyFilter);
+      posXSlider.addEventListener("input", applyFilter);
+      posYSlider.addEventListener("input", applyFilter);
+      sizeSlider.addEventListener("input", applyFilter);
+
+      function applyFilter() {
+        if (!capturedImage) return; // Si aucune image n'a été capturée, on ne fait rien
+
+        // Restaurer l'image capturée
+        context.putImageData(capturedImage, 0, 0);
 
         const selectedFrame = frameSelect.value;
         if (selectedFrame) {
-          // Charger l'image du calque sélectionné
           const frameImage = new Image();
-          frameImage.src = `/frames/${selectedFrame}`; // Chemin de l'image de calque
+          frameImage.src = `/frames/${selectedFrame}`; // Charger le calque sélectionné
+
           frameImage.onload = () => {
-            // Dessiner le calque sur le canvas par-dessus la photo
-            context.drawImage(frameImage, 0, 0, canvas.width, canvas.height);
+            const posX = parseInt(posXSlider.value);
+            const posY = parseInt(posYSlider.value);
+            const size = parseInt(sizeSlider.value);
+
+            // Dessiner le filtre à la position et avec la taille choisie
+            context.drawImage(frameImage, posX, posY, size, size);
           };
         }
-      });
+      }
 
       // Sauvegarder l'image avec le calque appliqué
       saveButton.addEventListener("click", () => {
-        const token = localStorage.getItem("token");
-        const imageData = canvas.toDataURL("image/png");
+        if (!capturedImage) return; // Vérifier qu'une image a bien été capturée avant de sauvegarder
+
+        const token = localStorage.getItem("token"); // Récupérer le token depuis le localStorage
+        const imageData = canvas.toDataURL("image/png"); // Convertir le canvas en image Base64
 
         fetch("/auth/upload", {
           method: "POST",
@@ -119,12 +227,74 @@
           .then((response) => response.json())
           .then((data) => {
             console.log("Image sauvegardée avec succès :", data);
+            loadUserImages(); // Recharger la liste des images
           })
           .catch((error) => {
             console.error("Erreur lors de la sauvegarde de l'image :", error);
           });
       });
+
+      // Charger les images de l'utilisateur
+      function loadUserImages() {
+        const token = localStorage.getItem("token");
+
+        fetch("/auth/user-images", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            imageList.innerHTML = ""; // Vider la liste avant de recharger
+
+            data.forEach((image) => {
+              const imgContainer = document.createElement("div");
+              const img = document.createElement("img");
+              img.src = image.image_path;
+              img.width = 200;
+
+              const deleteButton = document.createElement("button");
+              deleteButton.classList.add("delete-btn");
+              deleteButton.textContent = "Supprimer";
+
+              // Ajouter l'événement de suppression
+              deleteButton.addEventListener("click", () => {
+                deleteImage(image.id);
+              });
+
+              imgContainer.appendChild(img);
+              imgContainer.appendChild(deleteButton);
+              imageList.appendChild(imgContainer);
+            });
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la récupération des images :", error);
+          });
+      }
+
+      // Supprimer une image
+      function deleteImage(imageId) {
+        const token = localStorage.getItem("token");
+
+        fetch(`/auth/delete-image/${imageId}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Image supprimée avec succès :", data);
+            loadUserImages(); // Recharger la liste des images après suppression
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la suppression de l'image :", error);
+          });
+      }
+
+      // Charger les images de l'utilisateur au chargement de la page
+      window.onload = loadUserImages;
     </script>
-    <script src="/logout.js"></script>
   </body>
 </html>
