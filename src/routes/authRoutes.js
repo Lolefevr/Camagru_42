@@ -6,6 +6,9 @@ const verifyToken = require("../middleware/authMiddleware");
 // Route pour l'inscription
 router.post("/register", authController.register);
 
+// Route pour vérifier l'email
+router.get("/verify-email", authController.verifyEmail);
+
 // Route pour la connexion
 router.post("/login", authController.login);
 
