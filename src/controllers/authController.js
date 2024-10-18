@@ -5,6 +5,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const sharp = require("sharp");
+const transporter = require("../../config/emailConfig");
 
 // Fonction pour vérifier le token (utilisée par /verify-token)
 exports.verifyToken = (req, res) => {
@@ -18,52 +19,163 @@ exports.logout = (req, res) => {
 };
 
 // Fonction d'inscription (register)
+// Fonction d'inscription (register)
 exports.register = (req, res) => {
-  const { email, password } = req.body;
+  const { email, username, password } = req.body; // Inclure username
 
-  // Vérifie si l'utilisateur existe déjà
-  db.query("SELECT * FROM users WHERE email = ?", [email], (err, result) => {
-    if (err) {
-      return res.status(500).send("Erreur du serveur");
-    }
-    if (result.length > 0) {
-      console.log("Cet email est déjà utilisé");
-      return res.status(400).send("Cet email est déjà utilisé.");
-    }
-
-    // Hacher le mot de passe et insérer l'utilisateur dans la base de données
-    bcrypt.hash(password, 10, (err, hash) => {
-      if (err) throw err;
-      db.query(
-        "INSERT INTO users (email, password) VALUES (?, ?)",
-        [email, hash],
-        (err, result) => {
-          if (err) {
-            return res
-              .status(500)
-              .send("Erreur du serveur lors de l'enregistrement");
-          }
-
-          // Générer un token JWT
-          const token = jwt.sign(
-            { id: result.insertId },
-            process.env.JWT_SECRET,
-            {
-              expiresIn: "1h",
-            }
-          );
-
-          // Définir le token dans un cookie HTTP-only
-          res.cookie("token", token, {
-            httpOnly: true,
-            // secure: true, // À activer si vous utilisez HTTPS
-            maxAge: 3600000, // 1 heure en millisecondes
-          });
-
-          res.status(201).json({ message: "Inscription réussie" });
+  // Vérifie si l'utilisateur existe déjà par email ou par username
+  db.query(
+    "SELECT * FROM users WHERE email = ? OR username = ?",
+    [email, username],
+    (err, result) => {
+      if (err) {
+        return res.status(500).send("Erreur du serveur");
+      }
+      if (result.length > 0) {
+        if (result[0].email === email) {
+          return res.status(400).send("Cet email est déjà utilisé.");
         }
-      );
-    });
+        if (result[0].username === username) {
+          return res.status(400).send("Ce nom d'utilisateur est déjà utilisé.");
+        }
+      }
+
+      // Hacher le mot de passe et insérer l'utilisateur dans la base de données
+      bcrypt.hash(password, 10, (err, hash) => {
+        if (err) throw err;
+        db.query(
+          "INSERT INTO users (email, username, password) VALUES (?, ?, ?)",
+          [email, username, hash],
+          (err, result) => {
+            if (err) {
+              return res
+                .status(500)
+                .send("Erreur du serveur lors de l'enregistrement");
+            }
+
+            const userId = result.insertId;
+
+            // Générer un jeton de vérification JWT
+            const verificationToken = jwt.sign(
+              { id: userId },
+              process.env.JWT_SECRET,
+              { expiresIn: "24h" } // Le jeton expire après 24 heures
+            );
+
+            // Stocker le jeton de vérification dans la base de données
+            db.query(
+              "UPDATE users SET verificationToken = ? WHERE id = ?",
+              [verificationToken, userId],
+              (err, updateResult) => {
+                if (err) {
+                  return res
+                    .status(500)
+                    .send(
+                      "Erreur du serveur lors de la mise à jour de l'utilisateur"
+                    );
+                }
+
+                // Construire le lien de vérification
+                const verificationLink = `http://localhost:3000/auth/verify-email?token=${verificationToken}`;
+
+                // Définir les options de l'email
+                const mailOptions = {
+                  from: '"Camagru Support" illidan888@hotmail.fr', // Remplacez par votre adresse email vérifiée
+                  to: email,
+                  subject: "Vérification de votre compte Camagru",
+                  html: `
+					<p>Merci de vous être inscrit sur Camagru !</p>
+					<p>Veuillez cliquer sur le lien suivant pour vérifier votre adresse email :</p>
+					<a href="${verificationLink}">Vérifier mon email</a>
+					<p>Ce lien expirera dans 24 heures.</p>
+				  `,
+                };
+
+                // Envoyer l'email de vérification
+                transporter.sendMail(mailOptions, (error, info) => {
+                  if (error) {
+                    console.error(
+                      "Erreur lors de l'envoi de l'email de vérification :",
+                      error
+                    );
+                    return res
+                      .status(500)
+                      .send(
+                        "Erreur lors de l'envoi de l'email de vérification"
+                      );
+                  }
+                  console.log("Email de vérification envoyé :", info.response);
+
+                  res.status(201).json({
+                    message:
+                      "Inscription réussie. Veuillez vérifier votre email pour confirmer votre compte.",
+                  });
+                });
+              }
+            );
+          }
+        );
+      });
+    }
+  );
+};
+
+// Fonction pour vérifier l'email
+exports.verifyEmail = (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(400).send("Jeton de vérification manquant.");
+  }
+
+  // Vérifier le jeton JWT
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      console.error("Erreur lors de la vérification du jeton :", err);
+      return res.status(400).send("Jeton de vérification invalide ou expiré.");
+    }
+
+    const userId = decoded.id;
+
+    // Trouver l'utilisateur avec ce jeton
+    db.query(
+      "SELECT * FROM users WHERE id = ? AND verificationToken = ?",
+      [userId, token],
+      (err, results) => {
+        if (err) {
+          console.error(
+            "Erreur lors de la requête à la base de données :",
+            err
+          );
+          return res.status(500).send("Erreur du serveur.");
+        }
+
+        if (results.length === 0) {
+          return res.status(400).send("Jeton de vérification invalide.");
+        }
+
+        // Mettre à jour l'utilisateur comme vérifié
+        db.query(
+          "UPDATE users SET isVerified = 1, verificationToken = NULL WHERE id = ?",
+          [userId],
+          (err, updateResult) => {
+            if (err) {
+              console.error(
+                "Erreur lors de la mise à jour de l'utilisateur :",
+                err
+              );
+              return res
+                .status(500)
+                .send("Erreur lors de la mise à jour de l'utilisateur.");
+            }
+
+            res.send(
+              "Votre email a été vérifié avec succès. Vous pouvez maintenant vous connecter."
+            );
+          }
+        );
+      }
+    );
   });
 };
 
@@ -81,6 +193,13 @@ exports.login = (req, res) => {
     }
 
     const user = result[0];
+
+    // Vérifier si l'utilisateur a vérifié son email
+    if (!user.isVerified) {
+      return res
+        .status(400)
+        .send("Veuillez vérifier votre adresse email avant de vous connecter.");
+    }
 
     // Comparer le mot de passe avec le hachage stocké
     bcrypt.compare(password, user.password, (err, isMatch) => {
