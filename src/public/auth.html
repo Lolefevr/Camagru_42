@@ -154,7 +154,9 @@
               return response.json();
             })
             .then((data) => {
-              window.location.href = "/camera"; // Rediriger vers la page caméra
+              alert(
+                "Inscription réussie! Veuillez vérifier votre email pour confirmer votre compte."
+              );
             })
             .catch((error) => {
               console.error("Erreur lors de l'inscription:", error);
