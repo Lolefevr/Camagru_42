@@ -15,6 +15,7 @@
         height: 100vh;
         margin: 0;
       }
+
       header {
         grid-area: header;
         background-color: #333;
@@ -26,10 +27,12 @@
         justify-content: space-between;
         align-items: center;
       }
+
       .nav-links {
         display: flex;
         gap: 20px;
       }
+
       .nav-links a {
         color: white;
         text-decoration: none;
@@ -39,10 +42,12 @@
         border: none;
         cursor: pointer;
       }
+
       .nav-links a.active {
         background-color: #555;
         border-radius: 5px;
       }
+
       footer {
         grid-area: footer;
         background-color: #333;
@@ -50,12 +55,14 @@
         text-align: center;
         padding: 1rem;
       }
+
       main {
         grid-area: main;
         padding: 1rem;
         background-color: #f4f4f4;
         overflow-y: auto;
       }
+
       .logout-btn {
         background-color: red;
         color: white;
@@ -64,12 +71,14 @@
         cursor: pointer;
         border-radius: 5px;
       }
+
       img {
         max-width: 100%;
         height: auto;
         margin-bottom: 10px;
         display: block;
       }
+
       .image-container {
         display: flex;
         align-items: center;
@@ -78,17 +87,21 @@
         border-bottom: 1px solid #ccc;
         padding-bottom: 10px;
       }
+
       .username {
         font-weight: bold;
         margin-left: 20px;
       }
+
       button {
         margin-top: 10px;
       }
+
       .pagination {
         text-align: center;
         margin-top: 20px;
       }
+
       .pagination button {
         padding: 10px 15px;
         margin: 0 5px;
@@ -96,6 +109,69 @@
         color: white;
         border: none;
         cursor: pointer;
+      }
+
+      /* Responsive Design */
+      @media screen and (max-width: 768px) {
+        body {
+          grid-template-areas:
+            "header"
+            "main"
+            "footer";
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr auto;
+        }
+
+        header {
+          flex-direction: column;
+        }
+
+        .nav-links {
+          flex-direction: column;
+          align-items: center;
+          gap: 10px; /* Réduire l'espace entre les liens */
+        }
+
+        .nav-links a {
+          padding: 10px;
+          width: 100%;
+          text-align: center;
+        }
+
+        main {
+          padding: 0.5rem;
+        }
+
+        .image-container {
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+        }
+
+        img {
+          width: 100%; /* L'image prend toute la largeur sur mobile */
+          max-width: 100%;
+          height: auto;
+        }
+
+        .pagination {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .pagination button {
+          width: 100%;
+          margin-bottom: 10px; /* Ajouter un espace entre les boutons de pagination */
+        }
+
+        .logout-btn {
+          width: 100%;
+          margin-top: 10px;
+          padding: 10px 0; /* Ajuster la hauteur du bouton */
+          text-align: center;
+        }
       }
     </style>
   </head>

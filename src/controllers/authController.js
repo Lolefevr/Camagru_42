@@ -205,6 +205,49 @@ exports.getImages = (req, res) => {
   );
 };
 
+// Route to update user details (username, email, or password)
+exports.updateUserDetails = (req, res) => {
+  const userId = req.userId;
+  const { username, email, password } = req.body;
+
+  let query = "UPDATE users SET ";
+  let fields = [];
+  let values = [];
+
+  if (username) {
+    fields.push("username = ?");
+    values.push(username);
+  }
+
+  if (email) {
+    fields.push("email = ?");
+    values.push(email);
+  }
+
+  if (password) {
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    fields.push("password = ?");
+    values.push(hashedPassword);
+  }
+
+  if (fields.length === 0) {
+    return res.status(400).send({ message: "No fields to update." });
+  }
+
+  query += fields.join(", ") + " WHERE id = ?";
+  values.push(userId);
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      console.error("Error updating user details:", err);
+      return res.status(500).send({ message: "Server error." });
+    }
+    res
+      .status(200)
+      .send({ success: true, message: "User details updated successfully." });
+  });
+};
+
 // Fonction pour lister les fichiers de calques
 exports.getFrames = (req, res) => {
   const framesDir = path.join(__dirname, "../frames"); // Assure-toi que ce chemin est correct

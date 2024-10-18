@@ -52,4 +52,6 @@ router.get("/settings", verifyToken, (req, res) => {
   res.sendFile(filePath);
 });
 
+router.post("/update", verifyToken, authController.updateUserDetails);
+
 module.exports = router;
