@@ -159,14 +159,50 @@ exports.uploadImage = (req, res) => {
 };
 
 // Récupérer les images de tous les utilisateurs
+// exports.getImages = (req, res) => {
+//   db.query("SELECT * FROM images", (err, results) => {
+//     if (err) {
+//       console.error("Erreur lors de la récupération des images :", err);
+//       return res.status(500).send("Erreur lors de la récupération des images.");
+//     }
+//     res.status(200).json(results);
+//   });
+// };
+
+// Récupérer les images paginées de tous les utilisateurs
 exports.getImages = (req, res) => {
-  db.query("SELECT * FROM images", (err, results) => {
-    if (err) {
-      console.error("Erreur lors de la récupération des images :", err);
-      return res.status(500).send("Erreur lors de la récupération des images.");
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 5;
+  const offset = (page - 1) * limit;
+
+  db.query(
+    "SELECT i.*, u.email FROM images i JOIN users u ON i.user_id = u.id ORDER BY i.created_at DESC LIMIT ? OFFSET ?",
+    [limit, offset],
+    (err, results) => {
+      if (err) {
+        console.error("Erreur lors de la récupération des images :", err);
+        return res
+          .status(500)
+          .send("Erreur lors de la récupération des images.");
+      }
+
+      // Une fois les images récupérées, comptons le nombre total d'images
+      db.query("SELECT COUNT(*) as total FROM images", (err, countResult) => {
+        if (err) {
+          console.error("Erreur lors du comptage des images :", err);
+          return res.status(500).send("Erreur lors du comptage des images.");
+        }
+
+        const totalImages = countResult[0].total;
+        const hasMore = page * limit < totalImages;
+
+        res.status(200).json({
+          images: results, // images avec l'email inclus
+          hasMore: hasMore, // booléen pour savoir s'il y a encore des images après cette page
+        });
+      });
     }
-    res.status(200).json(results);
-  });
+  );
 };
 
 // Fonction pour lister les fichiers de calques

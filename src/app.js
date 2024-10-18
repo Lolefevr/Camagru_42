@@ -48,6 +48,21 @@ app.get("/gallery", verifyToken, (req, res, next) => {
   });
 });
 
+// Nouvelle route pour Settings
+app.get("/settings", verifyToken, (req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "-1");
+  const filePath = path.join(__dirname, "public/settings.html");
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (!res.headersSent) {
+        return next(err);
+      }
+    }
+  });
+});
+
 // Routes d'authentification
 const authRoutes = require("./routes/authRoutes");
 app.use("/auth", authRoutes);

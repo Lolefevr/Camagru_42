@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings</title>
+    <style>
+      body {
+        display: grid;
+        grid-template-areas:
+          "header"
+          "main"
+          "footer";
+        grid-template-rows: auto 1fr auto;
+        height: 100vh;
+        margin: 0;
+      }
+      header {
+        grid-area: header;
+        background-color: #333;
+        color: white;
+        padding: 1rem;
+        text-align: center;
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .nav-links {
+        display: flex;
+        gap: 20px;
+      }
+      .nav-links a {
+        color: white;
+        text-decoration: none;
+        font-size: 1.2rem;
+        padding: 10px 15px;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+      }
+      .nav-links a.active {
+        background-color: #555;
+        border-radius: 5px;
+      }
+      footer {
+        grid-area: footer;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        padding: 1rem;
+      }
+      main {
+        grid-area: main;
+        padding: 1rem;
+        background-color: #f4f4f4;
+        overflow-y: auto;
+      }
+      .logout-btn {
+        background-color: red;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="nav-links">
+        <a href="/gallery" id="gallery-link">Gallery</a>
+        <a href="/camera" id="dashboard-link">Dashboard</a>
+        <a href="/settings" id="settings-link" class="active">Settings</a>
+      </div>
+      <button class="logout-btn">Déconnexion</button>
+    </header>
+
+    <main>
+      <h2>Page des paramètres (Settings)</h2>
+    </main>
+
+    <footer>
+      <p>Camagru © 2024</p>
+    </footer>
+
+    <script>
+      // Marquer le lien actif
+      const currentUrl = window.location.pathname;
+      if (currentUrl === "/gallery") {
+        document.getElementById("gallery-link").classList.add("active");
+      } else if (currentUrl === "/camera") {
+        document.getElementById("dashboard-link").classList.add("active");
+      } else if (currentUrl === "/settings") {
+        document.getElementById("settings-link").classList.add("active");
+      }
+
+      // Fonction de déconnexion
+      document.querySelector(".logout-btn").addEventListener("click", () => {
+        fetch("/auth/logout", {
+          method: "POST",
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (response.ok) {
+              window.location.href = "/"; // Rediriger vers la page d'accueil
+            } else {
+              throw new Error("Erreur lors de la déconnexion");
+            }
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la déconnexion :", error);
+          });
+      });
+    </script>
+  </body>
+</html>

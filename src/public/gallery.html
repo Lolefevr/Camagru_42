@@ -22,6 +22,26 @@
         padding: 1rem;
         text-align: center;
         position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .nav-links {
+        display: flex;
+        gap: 20px;
+      }
+      .nav-links a {
+        color: white;
+        text-decoration: none;
+        font-size: 1.2rem;
+        padding: 10px 15px;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+      }
+      .nav-links a.active {
+        background-color: #555;
+        border-radius: 5px;
       }
       footer {
         grid-area: footer;
@@ -37,10 +57,6 @@
         overflow-y: auto;
       }
       .logout-btn {
-        position: absolute;
-        top: 50%;
-        right: 1rem;
-        transform: translateY(-50%);
         background-color: red;
         color: white;
         padding: 10px 20px;
@@ -54,19 +70,51 @@
         margin-bottom: 10px;
         display: block;
       }
+      .image-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 10px;
+      }
+      .username {
+        font-weight: bold;
+        margin-left: 20px;
+      }
       button {
         margin-top: 10px;
+      }
+      .pagination {
+        text-align: center;
+        margin-top: 20px;
+      }
+      .pagination button {
+        padding: 10px 15px;
+        margin: 0 5px;
+        background-color: #333;
+        color: white;
+        border: none;
+        cursor: pointer;
       }
     </style>
   </head>
   <body>
     <header>
-      <h1>Galerie d'images</h1>
+      <div class="nav-links">
+        <a href="/gallery" id="gallery-link" class="active">Gallery</a>
+        <a href="/camera" id="dashboard-link">Dashboard</a>
+        <a href="/settings" id="settings-link">Settings</a>
+      </div>
       <button class="logout-btn">Déconnexion</button>
     </header>
 
     <main>
       <div id="gallery"></div>
+      <div class="pagination">
+        <button id="prev-page" disabled>Précédent</button>
+        <button id="next-page">Suivant</button>
+      </div>
     </main>
 
     <footer>
@@ -74,6 +122,19 @@
     </footer>
 
     <script>
+      // Marquer le lien actif
+      const currentUrl = window.location.pathname;
+      if (currentUrl === "/gallery") {
+        document.getElementById("gallery-link").classList.add("active");
+      } else if (currentUrl === "/camera") {
+        document.getElementById("dashboard-link").classList.add("active");
+      } else if (currentUrl === "/settings") {
+        document.getElementById("settings-link").classList.add("active");
+      }
+
+      let currentPage = 1;
+      const imagesPerPage = 5; // Limite d'images par page
+
       // Vérification du token au chargement
       window.addEventListener("load", function () {
         fetch("/auth/verify-token", {
@@ -92,6 +153,8 @@
             console.error("Erreur lors de la vérification du token :", err);
             window.location.href = "/";
           });
+
+        loadImages(currentPage); // Charger les images au chargement de la page
       });
 
       // Fonction de déconnexion
@@ -112,103 +175,123 @@
           });
       });
 
-      // Récupérer les images et afficher la galerie
-      fetch("/auth/images", {
-        credentials: "include", // Inclure les cookies
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          const galleryDiv = document.getElementById("gallery");
+      // Récupérer les images et afficher la galerie avec pagination
+      function loadImages(page) {
+        fetch(`/auth/images?page=${page}&limit=${imagesPerPage}`, {
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            const galleryDiv = document.getElementById("gallery");
+            galleryDiv.innerHTML = ""; // Vider la galerie avant de recharger
 
-          data.forEach((image) => {
-            const imgContainer = document.createElement("div");
-            const img = document.createElement("img");
-            const likeButton = document.createElement("button");
-            const commentForm = document.createElement("form");
-            const commentInput = document.createElement("input");
-            const commentButton = document.createElement("button");
-            const commentSection = document.createElement("div");
+            if (data.images.length === 0) {
+              galleryDiv.innerHTML = "<p>Aucune image à afficher.</p>";
+            } else {
+              data.images.forEach((image) => {
+                const imgContainer = document.createElement("div");
+                imgContainer.classList.add("image-container");
 
-            img.src = image.image_path;
-            img.width = 200;
+                const img = document.createElement("img");
+                img.src = image.image_path;
+                img.width = 200;
 
-            // Charger l'état du like (vérifier si l'utilisateur a liké l'image)
-            fetch(`/auth/like-status/${image.id}`, {
-              credentials: "include", // Inclure les cookies
-            })
-              .then((response) => response.json())
-              .then((likeData) => {
-                if (likeData.liked) {
-                  likeButton.textContent = `Unlike (${image.likes})`; // Si déjà liké
-                } else {
-                  likeButton.textContent = `Like (${image.likes})`; // Si pas liké
-                }
-              });
+                // Vérifie ici que l'email est bien récupéré et affiché
+                const email = document.createElement("div");
+                email.classList.add("username");
+                email.textContent = `Par : ${
+                  image.email ? image.email : "Inconnu"
+                }`; // Afficher l'email
 
-            // Gestion des likes (ajouter ou retirer un like)
-            likeButton.addEventListener("click", () => {
-              fetch(`/auth/like/${image.id}`, {
-                method: "POST",
-                credentials: "include", // Inclure les cookies
-              })
-                .then((response) => response.json())
-                .then((data) => {
-                  // Mettre à jour le bouton après un like/unlike
-                  fetch(`/auth/like-status/${image.id}`, {
+                const likeButton = document.createElement("button");
+                const commentForm = document.createElement("form");
+                const commentInput = document.createElement("input");
+                const commentButton = document.createElement("button");
+                const commentSection = document.createElement("div");
+
+                // Charger l'état du like (vérifier si l'utilisateur a liké l'image)
+                fetch(`/auth/like-status/${image.id}`, {
+                  credentials: "include", // Inclure les cookies
+                })
+                  .then((response) => response.json())
+                  .then((likeData) => {
+                    likeButton.textContent = likeData.liked
+                      ? `Unlike (${image.likes})`
+                      : `Like (${image.likes})`;
+                  });
+
+                // Gestion des likes (ajouter ou retirer un like)
+                likeButton.addEventListener("click", () => {
+                  fetch(`/auth/like/${image.id}`, {
+                    method: "POST",
                     credentials: "include", // Inclure les cookies
                   })
                     .then((response) => response.json())
-                    .then((likeData) => {
-                      if (likeData.liked) {
-                        likeButton.textContent = `Unlike (${likeData.likes})`;
-                      } else {
-                        likeButton.textContent = `Like (${likeData.likes})`;
-                      }
+                    .then((data) => {
+                      // Mettre à jour le bouton après un like/unlike
+                      fetch(`/auth/like-status/${image.id}`, {
+                        credentials: "include", // Inclure les cookies
+                      })
+                        .then((response) => response.json())
+                        .then((likeData) => {
+                          likeButton.textContent = likeData.liked
+                            ? `Unlike (${likeData.likes})`
+                            : `Like (${likeData.likes})`;
+                        });
                     });
                 });
-            });
 
-            // Formulaire pour ajouter un commentaire
-            commentInput.placeholder = "Ajouter un commentaire...";
-            commentButton.textContent = "Envoyer";
-            commentButton.type = "submit";
-            commentForm.appendChild(commentInput);
-            commentForm.appendChild(commentButton);
+                // Formulaire pour ajouter un commentaire
+                commentInput.placeholder = "Ajouter un commentaire...";
+                commentButton.textContent = "Envoyer";
+                commentButton.type = "submit";
+                commentForm.appendChild(commentInput);
+                commentForm.appendChild(commentButton);
 
-            // Gestion des commentaires : soumettre un commentaire
-            commentForm.addEventListener("submit", (e) => {
-              e.preventDefault();
-              const comment = commentInput.value;
-              if (comment) {
-                fetch(`/auth/comment/${image.id}`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  credentials: "include", // Inclure les cookies
-                  body: JSON.stringify({ comment }),
-                })
-                  .then((response) => response.json())
-                  .then((data) => {
-                    commentInput.value = ""; // Réinitialiser le champ de commentaire
-                    loadComments(image.id, commentSection); // Recharger les commentaires après ajout
-                  });
-              }
-            });
+                // Gestion des commentaires : soumettre un commentaire
+                commentForm.addEventListener("submit", (e) => {
+                  e.preventDefault();
+                  const comment = commentInput.value;
+                  if (comment) {
+                    fetch(`/auth/comment/${image.id}`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      credentials: "include", // Inclure les cookies
+                      body: JSON.stringify({ comment }),
+                    })
+                      .then((response) => response.json())
+                      .then((data) => {
+                        commentInput.value = ""; // Réinitialiser le champ de commentaire
+                        loadComments(image.id, commentSection); // Recharger les commentaires après ajout
+                      });
+                  }
+                });
 
-            imgContainer.appendChild(img);
-            imgContainer.appendChild(likeButton);
-            imgContainer.appendChild(commentForm);
-            imgContainer.appendChild(commentSection);
-            galleryDiv.appendChild(imgContainer);
+                imgContainer.appendChild(img);
+                imgContainer.appendChild(email);
+                galleryDiv.appendChild(imgContainer);
+                imgContainer.appendChild(likeButton);
+                imgContainer.appendChild(commentForm);
+                imgContainer.appendChild(commentSection);
 
-            // Charger les commentaires pour cette image
-            loadComments(image.id, commentSection);
+                // Charger les commentaires pour cette image
+                loadComments(image.id, commentSection);
+              });
+
+              // Mettre à jour l'état des boutons de pagination
+              const prevButton = document.getElementById("prev-page");
+              const nextButton = document.getElementById("next-page");
+
+              prevButton.disabled = page === 1;
+              nextButton.disabled = !data.hasMore;
+            }
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la récupération des images :", error);
           });
-        })
-        .catch((error) => {
-          console.error("Erreur lors de la récupération des images :", error);
-        });
+      }
 
       // Fonction pour charger les commentaires d'une image
       function loadComments(imageId, commentSection) {
@@ -220,7 +303,7 @@
           .then((comments) => {
             comments.forEach((comment) => {
               const commentDiv = document.createElement("div");
-              commentDiv.textContent = `${comment.email} : ${comment.comment} (le ${comment.created_at})`;
+              commentDiv.textContent = `${comment.email} : ${comment.comment}`;
               commentSection.appendChild(commentDiv);
             });
           })
@@ -231,6 +314,19 @@
             );
           });
       }
+
+      // Gestion de la pagination
+      document.getElementById("prev-page").addEventListener("click", () => {
+        if (currentPage > 1) {
+          currentPage--;
+          loadImages(currentPage);
+        }
+      });
+
+      document.getElementById("next-page").addEventListener("click", () => {
+        currentPage++;
+        loadImages(currentPage);
+      });
     </script>
   </body>
 </html>

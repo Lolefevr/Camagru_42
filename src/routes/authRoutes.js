@@ -46,4 +46,10 @@ router.delete(
   authController.deleteImage
 );
 
+// Nouvelle route pour la page settings (sécurisée avec le JWT)
+router.get("/settings", verifyToken, (req, res) => {
+  const filePath = path.join(__dirname, "../public/settings.html");
+  res.sendFile(filePath);
+});
+
 module.exports = router;
