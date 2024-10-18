@@ -22,6 +22,33 @@
         color: white;
         padding: 1rem;
         text-align: center;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .nav-links {
+        display: flex;
+        gap: 20px;
+      }
+      .nav-links a {
+        color: white;
+        text-decoration: none;
+        font-size: 1.2rem;
+        padding: 10px 15px;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+      }
+      .nav-links a.active {
+        background-color: #555;
+        border-radius: 5px;
+      }
+      footer {
+        grid-area: footer;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        padding: 1rem;
       }
       main {
         grid-area: main;
@@ -34,13 +61,7 @@
         padding: 1rem;
         border-left: 1px solid #ddd;
         overflow-y: auto;
-      }
-      footer {
-        grid-area: footer;
-        background-color: #333;
-        color: white;
-        text-align: center;
-        padding: 1rem;
+        transition: transform 0.3s ease-in-out;
       }
       img {
         max-width: 100%;
@@ -66,12 +87,106 @@
         background-color: #cccccc;
         cursor: not-allowed;
       }
+      .logout-btn {
+        background-color: red;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+
+      /* Sidebar toggle button */
+      .sidebar-toggle-btn {
+        display: none;
+        background-color: #333;
+        color: white;
+        border: none;
+        padding: 10px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+      }
+
+      /* Sidebar responsive styles */
+      @media (max-width: 768px) {
+        body {
+          grid-template-areas:
+            "header"
+            "main"
+            "footer";
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr auto;
+        }
+        aside {
+          position: fixed;
+          top: 0;
+          right: 0;
+          height: 100%;
+          width: 300px;
+          transform: translateX(100%);
+          background-color: #f9f9f9;
+          box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
+        }
+        main {
+          padding: 10px;
+        }
+        header {
+          flex-direction: column;
+          gap: 10px;
+        }
+        .nav-links {
+          flex-direction: column;
+        }
+        video,
+        canvas {
+          width: 100%;
+          height: auto;
+        }
+        #controls label {
+          display: block;
+          margin-top: 10px;
+        }
+        .sidebar-toggle-btn {
+          display: block;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .nav-links a {
+          font-size: 1rem;
+        }
+        .logout-btn {
+          padding: 5px 10px;
+          font-size: 0.9rem;
+        }
+        h2,
+        h3 {
+          font-size: 1.2rem;
+        }
+        #capture,
+        #save {
+          padding: 10px;
+          font-size: 1rem;
+          width: 100%;
+        }
+      }
     </style>
   </head>
   <body>
     <header>
-      <h1>Dashboard</h1>
+      <div class="nav-links">
+        <a href="/gallery" id="gallery-link">Gallery</a>
+        <a href="/camera" id="dashboard-link" class="active">Dashboard</a>
+        <a href="/settings" id="settings-link">Settings</a>
+      </div>
+      <button class="logout-btn">Déconnexion</button>
     </header>
+
+    <button class="sidebar-toggle-btn" id="toggleSidebar">☰</button>
 
     <main>
       <h2>Capture de Photo avec la Webcam</h2>
@@ -102,7 +217,7 @@
       <button id="save" disabled>Sauvegarder la photo</button>
     </main>
 
-    <aside>
+    <aside id="sidebar">
       <h2>Images enregistrées</h2>
       <div id="image-list"></div>
     </aside>
@@ -123,9 +238,27 @@
       const sizeSlider = document.getElementById("size");
       const imageList = document.getElementById("image-list");
       const imageUpload = document.getElementById("image-upload");
+      const sidebar = document.getElementById("sidebar");
+      const toggleSidebarButton = document.getElementById("toggleSidebar");
 
       let capturedImage = null;
       let uploadedImage = null;
+
+      // Sidebar toggle functionality
+      toggleSidebarButton.addEventListener("click", () => {
+        if (sidebar.style.transform === "translateX(0%)") {
+          sidebar.style.transform = "translateX(100%)";
+        } else {
+          sidebar.style.transform = "translateX(0%)";
+        }
+      });
+
+      // Rendre la sidebar visible à nouveau lorsqu'on repasse sur un grand écran
+      window.addEventListener("resize", () => {
+        if (window.innerWidth > 768) {
+          sidebar.style.transform = "translateX(0%)"; // Forcer la réapparition sur grand écran
+        }
+      });
 
       // Charger dynamiquement les frames depuis le serveur
       window.addEventListener("load", function () {
@@ -340,6 +473,5 @@
 
       window.onload = loadUserImages;
     </script>
-    <script src="/logout.js"></script>
   </body>
 </html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camagru - Settings</title>
+    <style>
+      body {
+        display: grid;
+        grid-template-areas:
+          "header"
+          "main"
+          "footer";
+        grid-template-rows: auto 1fr auto;
+        height: 100vh;
+        margin: 0;
+      }
+      header {
+        grid-area: header;
+        background-color: #333;
+        color: white;
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .nav-links {
+        display: flex;
+        gap: 20px;
+      }
+      .nav-links a {
+        color: white;
+        text-decoration: none;
+        font-size: 1.2rem;
+        padding: 10px 15px;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+      }
+      .nav-links a.active {
+        background-color: #555;
+        border-radius: 5px;
+      }
+      .logout-btn {
+        background-color: red;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      footer {
+        grid-area: footer;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        padding: 1rem;
+      }
+      main {
+        grid-area: main;
+        padding: 1rem;
+        background-color: #f4f4f4;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      form {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        max-width: 400px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      .section-title {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        font-weight: bold;
+        border-bottom: 2px solid #ddd;
+        padding-bottom: 10px;
+      }
+      label {
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input {
+        padding: 10px;
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+        width: 100%;
+      }
+      button {
+        background-color: #333;
+        color: white;
+        border: none;
+        padding: 10px;
+        cursor: pointer;
+        border-radius: 5px;
+        font-size: 1rem;
+      }
+      button:hover {
+        background-color: #555;
+      }
+      .section {
+        margin-bottom: 30px;
+      }
+      @media (max-width: 600px) {
+        header {
+          flex-direction: column;
+          gap: 10px;
+        }
+        .nav-links {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="nav-links">
+        <a href="/gallery" id="gallery-link">Gallery</a>
+        <a href="/camera" id="dashboard-link">Dashboard</a>
+        <a href="/settings" id="settings-link" class="active">Settings</a>
+      </div>
+      <button class="logout-btn">Déconnexion</button>
+    </header>
+
+    <main>
+      <form id="updateForm">
+        <!-- Section pour modifier l'email et le pseudo -->
+        <div class="section">
+          <h2 class="section-title">Modifier son email / pseudo</h2>
+          <label for="username">Username:</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            placeholder="Enter new username"
+          />
+
+          <label for="email">Email:</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="Enter new email address"
+          />
+        </div>
+
+        <!-- Section pour changer le mot de passe -->
+        <div class="section">
+          <h2 class="section-title">Modifier son mot de passe</h2>
+          <!-- Mot de passe actuel -->
+          <label for="current-password">Current Password:</label>
+          <input
+            type="password"
+            id="current-password"
+            name="current-password"
+            placeholder="Enter current password"
+            required
+          />
+
+          <!-- Nouveau mot de passe -->
+          <label for="password">New Password:</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Enter new password"
+            required
+          />
+
+          <!-- Confirmer le nouveau mot de passe -->
+          <label for="confirm-password">Confirm New Password:</label>
+          <input
+            type="password"
+            id="confirm-password"
+            name="confirm-password"
+            placeholder="Confirm new password"
+            required
+          />
+        </div>
+
+        <button type="submit">Update</button>
+      </form>
+    </main>
+
+    <footer>
+      <p>Camagru © 2024</p>
+    </footer>
+
+    <script>
+      document
+        .getElementById("updateForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const username = document.getElementById("username").value;
+          const email = document.getElementById("email").value;
+          const currentPassword =
+            document.getElementById("current-password").value;
+          const newPassword = document.getElementById("password").value;
+          const confirmPassword =
+            document.getElementById("confirm-password").value;
+
+          // Vérification que les deux nouveaux mots de passe sont identiques
+          if (newPassword !== confirmPassword) {
+            alert("New passwords do not match.");
+            return;
+          }
+
+          // Envoi des données de mise à jour
+          fetch("/auth/update", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              username,
+              email,
+              currentPassword,
+              newPassword,
+            }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                alert("User details updated successfully.");
+              } else {
+                alert("Error updating details: " + data.message);
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+            });
+        });
+
+      // Déconnexion logic
+      document.querySelector(".logout-btn").addEventListener("click", () => {
+        fetch("/auth/logout", {
+          method: "POST",
+          credentials: "include",
+        }).then((response) => {
+          if (response.ok) {
+            window.location.href = "/";
+          } else {
+            alert("Logout failed");
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
