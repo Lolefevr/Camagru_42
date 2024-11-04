@@ -36,7 +36,6 @@ fclean:
 	docker volume prune -f
 	docker network prune -f
 	docker image prune -af
-	systemctl stop mariadb
 	rm -rf ./src/uploads/*
 
 # Afficher les logs

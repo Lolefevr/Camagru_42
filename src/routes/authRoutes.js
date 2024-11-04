@@ -41,7 +41,6 @@ router.get("/frames", authController.getFrames);
 
 // Route pour récupérer les images de l'utilisateur
 router.get("/user-images", verifyToken, authController.getUserImages);
-
 // Route pour supprimer une image
 router.delete(
   "/delete-image/:imageId",
@@ -51,7 +50,7 @@ router.delete(
 
 // Nouvelle route pour la page settings (sécurisée avec le JWT)
 router.get("/settings", verifyToken, (req, res) => {
-  const filePath = path.join(__dirname, "../public/settings.html");
+  const filePath = path.join(dirname, "../public/settings.html");
   res.sendFile(filePath);
 });
 
@@ -61,5 +60,14 @@ router.get("/user-info", verifyToken, authController.getUserInfo);
 // Remplacez ensureAuthenticated par verifyToken pour sécuriser les routes
 router.post("/update-profile", verifyToken, authController.updateProfile);
 router.post("/update-password", verifyToken, authController.updatePassword);
+// Route pour la réinitialisation de mot de passe (mot de passe oublié)
+router.post("/forgot-password", authController.forgotPassword);
+
+router.get("/reset-password", (req, res) => {
+  const filePath = path.join(dirname, "../public/reset-password.html");
+  res.sendFile(filePath);
+});
+
+router.post("/reset-password", authController.resetPassword);
 
 module.exports = router;
