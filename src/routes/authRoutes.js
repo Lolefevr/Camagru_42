@@ -55,6 +55,11 @@ router.get("/settings", verifyToken, (req, res) => {
   res.sendFile(filePath);
 });
 
-router.post("/update", verifyToken, authController.updateUserDetails);
+// Route pour obtenir les informations de l'utilisateur connecté
+router.get("/user-info", verifyToken, authController.getUserInfo);
+
+// Remplacez ensureAuthenticated par verifyToken pour sécuriser les routes
+router.post("/update-profile", verifyToken, authController.updateProfile);
+router.post("/update-password", verifyToken, authController.updatePassword);
 
 module.exports = router;
