@@ -62,21 +62,39 @@
         background-color: #f4f4f4;
         display: flex;
         justify-content: center;
-        align-items: center;
+        align-items: flex-start;
+        flex-direction: column;
       }
-      form {
+      .user-info {
+        background-color: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        max-width: 400px;
+        width: 100%;
+      }
+      .user-info h3 {
+        font-size: 1.3rem;
+        margin-bottom: 5px;
+      }
+      .user-info p {
+        margin: 0;
+        font-size: 1rem;
+        color: #555;
+      }
+      .section {
         background-color: white;
         padding: 20px;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         max-width: 400px;
         width: 100%;
-        display: flex;
-        flex-direction: column;
+        margin-bottom: 30px;
       }
-      .section-title {
+      .section h3 {
         font-size: 1.5rem;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
         font-weight: bold;
         border-bottom: 2px solid #ddd;
         padding-bottom: 10px;
@@ -87,7 +105,7 @@
       }
       input {
         padding: 10px;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         border: 1px solid #ddd;
         border-radius: 4px;
         font-size: 1rem;
@@ -104,9 +122,6 @@
       }
       button:hover {
         background-color: #555;
-      }
-      .section {
-        margin-bottom: 30px;
       }
       @media (max-width: 600px) {
         header {
@@ -130,63 +145,68 @@
     </header>
 
     <main>
-      <form id="updateForm">
-        <!-- Section pour modifier l'email et le pseudo -->
-        <div class="section">
-          <h2 class="section-title">Modifier son email / pseudo</h2>
-          <label for="username">Username:</label>
+      <!-- Informations utilisateur affichées en haut -->
+      <div class="user-info">
+        <h3>Informations de l'utilisateur</h3>
+        <p>Email : <span id="user-email">Chargement...</span></p>
+        <p>Nom d'utilisateur : <span id="user-username">Chargement..</span></p>
+      </div>
+
+      <!-- Section Modifier son email / pseudo -->
+      <section class="section">
+        <h3>Modifier son email / pseudo</h3>
+        <form id="updateProfileForm">
+          <label for="username">Nom d'utilisateur :</label>
           <input
             type="text"
             id="username"
             name="username"
-            placeholder="Enter new username"
+            placeholder="Entrer un nouveau nom d'utilisateur"
           />
-
-          <label for="email">Email:</label>
+          <label for="email">Email :</label>
           <input
             type="email"
             id="email"
             name="email"
-            placeholder="Enter new email address"
+            placeholder="Entrer une nouvelle adresse email"
           />
-        </div>
+          <button type="submit">Mettre à jour le profil</button>
+        </form>
+      </section>
 
-        <!-- Section pour changer le mot de passe -->
-        <div class="section">
-          <h2 class="section-title">Modifier son mot de passe</h2>
-          <!-- Mot de passe actuel -->
-          <label for="current-password">Current Password:</label>
+      <!-- Section Modifier son mot de passe -->
+      <section class="section">
+        <h3>Modifier son mot de passe</h3>
+        <form id="updatePasswordForm">
+          <label for="current-password">Mot de passe actuel :</label>
           <input
             type="password"
             id="current-password"
             name="current-password"
-            placeholder="Enter current password"
+            placeholder="Entrer le mot de passe actuel"
             required
           />
-
-          <!-- Nouveau mot de passe -->
-          <label for="password">New Password:</label>
+          <label for="new-password">Nouveau mot de passe :</label>
           <input
             type="password"
-            id="password"
-            name="password"
-            placeholder="Enter new password"
+            id="new-password"
+            name="new-password"
+            placeholder="Entrer un nouveau mot de passe"
             required
           />
-
-          <!-- Confirmer le nouveau mot de passe -->
-          <label for="confirm-password">Confirm New Password:</label>
+          <label for="confirm-new-password"
+            >Confirmer le nouveau mot de passe :</label
+          >
           <input
             type="password"
-            id="confirm-password"
-            name="confirm-password"
-            placeholder="Confirm new password"
+            id="confirm-new-password"
+            name="confirm-new-password"
+            placeholder="Confirmer le nouveau mot de passe"
             required
           />
-        </div>
-
-        <button type="submit">Update</button>
-      </form>
+          <button type="submit">Mettre à jour le mot de passe</button>
+        </form>
+      </section>
     </main>
 
     <footer>
@@ -194,65 +214,109 @@
     </footer>
 
     <script>
+      // Charger les informations utilisateur au chargement de la page
+      function loadUserInfo() {
+        fetch("/auth/user-info", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          credentials: "include",
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Erreur HTTP: " + response.status);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.success && data.user) {
+              document.getElementById("user-email").textContent =
+                data.user.email;
+              document.getElementById("user-username").textContent =
+                data.user.username;
+            } else {
+              console.error(
+                "Erreur lors de la récupération des informations utilisateur :",
+                data.message
+              );
+            }
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la requête utilisateur :", error);
+          });
+      }
+
+      // Charger les informations utilisateur au chargement de la page
+      window.addEventListener("load", loadUserInfo);
+
+      // Soumission du formulaire de modification du profil
       document
-        .getElementById("updateForm")
+        .getElementById("updateProfileForm")
         .addEventListener("submit", function (e) {
           e.preventDefault();
-
           const username = document.getElementById("username").value;
           const email = document.getElementById("email").value;
-          const currentPassword =
-            document.getElementById("current-password").value;
-          const newPassword = document.getElementById("password").value;
-          const confirmPassword =
-            document.getElementById("confirm-password").value;
+          const token = localStorage.getItem("token");
 
-          // Vérification que les deux nouveaux mots de passe sont identiques
-          if (newPassword !== confirmPassword) {
-            alert("New passwords do not match.");
-            return;
-          }
-
-          // Envoi des données de mise à jour
-          fetch("/auth/update", {
+          fetch("/auth/update-profile", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
             },
             credentials: "include",
-            body: JSON.stringify({
-              username,
-              email,
-              currentPassword,
-              newPassword,
-            }),
+            body: JSON.stringify({ username, email }),
           })
             .then((response) => response.json())
             .then((data) => {
               if (data.success) {
-                alert("User details updated successfully.");
+                alert("Profil mis à jour avec succès.");
+                // Recharger les informations de l'utilisateur
+                loadUserInfo(); // Appel d'une fonction pour recharger dynamiquement
               } else {
-                alert("Error updating details: " + data.message);
+                alert(`Erreur: ${data.message}`);
               }
             })
-            .catch((error) => {
-              console.error("Error:", error);
-            });
+            .catch((error) => console.error("Erreur:", error));
         });
+      // Soumission du formulaire de modification du mot de passe
+      document
+        .getElementById("updatePasswordForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const currentPassword =
+            document.getElementById("current-password").value;
+          const newPassword = document.getElementById("new-password").value;
+          const confirmNewPassword = document.getElementById(
+            "confirm-new-password"
+          ).value;
 
-      // Déconnexion logic
-      document.querySelector(".logout-btn").addEventListener("click", () => {
-        fetch("/auth/logout", {
-          method: "POST",
-          credentials: "include",
-        }).then((response) => {
-          if (response.ok) {
-            window.location.href = "/";
-          } else {
-            alert("Logout failed");
+          if (newPassword !== confirmNewPassword) {
+            alert("Les nouveaux mots de passe ne correspondent pas.");
+            return;
           }
+          const token = localStorage.getItem("token");
+          fetch("/auth/update-password", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+            body: JSON.stringify({ currentPassword, newPassword }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              alert(
+                data.success
+                  ? "Mot de passe mis à jour avec succès."
+                  : `Erreur: ${data.message}`
+              );
+            })
+            .catch((error) => console.error("Erreur:", error));
         });
-      });
     </script>
   </body>
 </html>

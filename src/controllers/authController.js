@@ -277,17 +277,6 @@ exports.uploadImage = (req, res) => {
   });
 };
 
-// Récupérer les images de tous les utilisateurs
-// exports.getImages = (req, res) => {
-//   db.query("SELECT * FROM images", (err, results) => {
-//     if (err) {
-//       console.error("Erreur lors de la récupération des images :", err);
-//       return res.status(500).send("Erreur lors de la récupération des images.");
-//     }
-//     res.status(200).json(results);
-//   });
-// };
-
 // Récupérer les images paginées de tous les utilisateurs
 exports.getImages = (req, res) => {
   const page = parseInt(req.query.page) || 1;
@@ -324,47 +313,161 @@ exports.getImages = (req, res) => {
   );
 };
 
-// Route to update user details (username, email, or password)
-exports.updateUserDetails = (req, res) => {
-  const userId = req.userId;
-  const { username, email, password } = req.body;
+exports.getUserInfo = (req, res) => {
+  const userId = req.userId; // ID de l'utilisateur connecté fourni par le middleware
 
-  let query = "UPDATE users SET ";
-  let fields = [];
-  let values = [];
+  db.query(
+    "SELECT username, email FROM users WHERE id = ?",
+    [userId],
+    (err, results) => {
+      if (err) {
+        console.error(
+          "Erreur lors de la récupération des informations utilisateur :",
+          err
+        );
+        return res
+          .status(500)
+          .json({ success: false, message: "Erreur serveur." });
+      }
 
-  if (username) {
-    fields.push("username = ?");
-    values.push(username);
-  }
+      if (results.length === 0) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Utilisateur non trouvé." });
+      }
 
-  if (email) {
-    fields.push("email = ?");
-    values.push(email);
-  }
-
-  if (password) {
-    const hashedPassword = bcrypt.hashSync(password, 10);
-    fields.push("password = ?");
-    values.push(hashedPassword);
-  }
-
-  if (fields.length === 0) {
-    return res.status(400).send({ message: "No fields to update." });
-  }
-
-  query += fields.join(", ") + " WHERE id = ?";
-  values.push(userId);
-
-  db.query(query, values, (err, result) => {
-    if (err) {
-      console.error("Error updating user details:", err);
-      return res.status(500).send({ message: "Server error." });
+      // Log pour vérifier que les informations sont correctement récupérées
+      console.log("Informations utilisateur récupérées :", results[0]);
+      res.status(200).json({ success: true, user: results[0] });
     }
-    res
-      .status(200)
-      .send({ success: true, message: "User details updated successfully." });
-  });
+  );
+};
+
+// Route pour modifier le profil (email et pseudo)
+exports.updateProfile = (req, res) => {
+  const { username, email } = req.body;
+  const userId = req.userId; // ID de l'utilisateur connecté via le middleware
+
+  if (!username && !email) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Aucun changement à appliquer." });
+  }
+
+  // Initialiser une liste pour stocker les champs à mettre à jour
+  const fieldsToUpdate = {};
+  if (username) fieldsToUpdate.username = username;
+  if (email) fieldsToUpdate.email = email;
+
+  // Vérifier si l'email est déjà utilisé par un autre utilisateur
+  if (email) {
+    db.query(
+      "SELECT * FROM users WHERE email = ? AND id != ?",
+      [email, userId],
+      (err, result) => {
+        if (err)
+          return res
+            .status(500)
+            .json({ success: false, message: "Erreur du serveur." });
+
+        if (result.length > 0) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Cet email est déjà utilisé." });
+        }
+
+        // Mettre à jour les informations de l'utilisateur
+        db.query(
+          "UPDATE users SET ? WHERE id = ?",
+          [fieldsToUpdate, userId],
+          (err) => {
+            if (err)
+              return res
+                .status(500)
+                .json({ success: false, message: "Erreur serveur." });
+
+            res.status(200).json({
+              success: true,
+              message: "Profil mis à jour avec succès.",
+            });
+          }
+        );
+      }
+    );
+  } else {
+    // Mettre à jour si seul le pseudo est modifié
+    db.query(
+      "UPDATE users SET ? WHERE id = ?",
+      [fieldsToUpdate, userId],
+      (err) => {
+        if (err)
+          return res
+            .status(500)
+            .json({ success: false, message: "Erreur serveur." });
+
+        res
+          .status(200)
+          .json({ success: true, message: "Profil mis à jour avec succès." });
+      }
+    );
+  }
+};
+
+// Route pour modifier le mot de passe
+exports.updatePassword = (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.userId;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({
+      success: false,
+      message: "Veuillez fournir tous les champs requis.",
+    });
+  }
+
+  // Récupérer le mot de passe actuel de l'utilisateur depuis la base de données
+  db.query(
+    "SELECT password FROM users WHERE id = ?",
+    [userId],
+    async (err, result) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ success: false, message: "Erreur serveur." });
+
+      const user = result[0];
+      if (!user)
+        return res
+          .status(404)
+          .json({ success: false, message: "Utilisateur non trouvé." });
+
+      // Vérifier le mot de passe actuel
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch)
+        return res.status(400).json({
+          success: false,
+          message: "Le mot de passe actuel est incorrect.",
+        });
+
+      // Hacher et mettre à jour le nouveau mot de passe
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      db.query(
+        "UPDATE users SET password = ? WHERE id = ?",
+        [hashedPassword, userId],
+        (err) => {
+          if (err)
+            return res
+              .status(500)
+              .json({ success: false, message: "Erreur serveur." });
+
+          res.status(200).json({
+            success: true,
+            message: "Mot de passe mis à jour avec succès.",
+          });
+        }
+      );
+    }
+  );
 };
 
 // Fonction pour lister les fichiers de calques

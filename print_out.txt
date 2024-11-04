@@ -1,0 +1,2347 @@
+==== ./src/testEmail.js ====
+// ./src/testEmail.js
+const transporter = require("../config/emailConfig");
+
+const mailOptions = {
+  from: '"Camagru Support" illidan888@hotmail.fr', // Remplace par ton expéditeur vérifié
+  to: "illidan888@hotmail.fr", // Remplace par ton adresse email de test
+  subject: "Test d'envoi d'email avec SendinBlue",
+  text: "Bonjour,\n\nCeci est un email de test pour vérifier la configuration de SendinBlue.\n\nMerci !",
+  html: "<p>Bonjour,</p><p>Ceci est un email de test pour vérifier la configuration de SendinBlue.</p><p>Merci !</p>",
+};
+
+transporter.sendMail(mailOptions, (error, info) => {
+  if (error) {
+    return console.error("Erreur lors de l'envoi de l'email de test:", error);
+  }
+  console.log("Email de test envoyé avec succès:", info.response);
+});
+-e 
+
+==== ./src/middleware/authMiddleware.js ====
+const jwt = require("jsonwebtoken");
+const db = require("../../config/database");
+
+const verifyToken = (req, res, next) => {
+  const token = req.cookies.token; // Récupérer le token depuis le cookie
+
+  if (!token) {
+    if (req.accepts("html")) {
+      return res.redirect("/");
+    } else {
+      return res.status(403).json({ message: "Un token est requis." });
+    }
+  }
+
+  // Vérifier le token JWT
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      if (req.accepts("html")) {
+        return res.redirect("/");
+      } else {
+        return res.status(401).json({ message: "Token invalide ou expiré." });
+      }
+    }
+
+    // Vérifier que l'utilisateur existe dans la base de données
+    const userId = decoded.id;
+    db.query("SELECT * FROM users WHERE id = ?", [userId], (err, result) => {
+      if (err) {
+        console.error("Erreur lors de la requête à la base de données :", err);
+        return res.status(500).send("Erreur du serveur.");
+      }
+
+      if (result.length === 0) {
+        if (req.accepts("html")) {
+          return res.redirect("/");
+        } else {
+          return res.status(404).json({ message: "Utilisateur non trouvé." });
+        }
+      }
+
+      // Utilisateur trouvé, continuer
+      req.userId = userId;
+      next();
+    });
+  });
+};
+
+module.exports = verifyToken;
+-e 
+
+==== ./src/public/settings.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camagru - Settings</title>
+    <style>
+      body {
+        display: grid;
+        grid-template-areas:
+          "header"
+          "main"
+          "footer";
+        grid-template-rows: auto 1fr auto;
+        height: 100vh;
+        margin: 0;
+      }
+      header {
+        grid-area: header;
+        background-color: #333;
+        color: white;
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .nav-links {
+        display: flex;
+        gap: 20px;
+      }
+      .nav-links a {
+        color: white;
+        text-decoration: none;
+        font-size: 1.2rem;
+        padding: 10px 15px;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+      }
+      .nav-links a.active {
+        background-color: #555;
+        border-radius: 5px;
+      }
+      .logout-btn {
+        background-color: red;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      footer {
+        grid-area: footer;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        padding: 1rem;
+      }
+      main {
+        grid-area: main;
+        padding: 1rem;
+        background-color: #f4f4f4;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      form {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        max-width: 400px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      .section-title {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        font-weight: bold;
+        border-bottom: 2px solid #ddd;
+        padding-bottom: 10px;
+      }
+      label {
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input {
+        padding: 10px;
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+        width: 100%;
+      }
+      button {
+        background-color: #333;
+        color: white;
+        border: none;
+        padding: 10px;
+        cursor: pointer;
+        border-radius: 5px;
+        font-size: 1rem;
+      }
+      button:hover {
+        background-color: #555;
+      }
+      .section {
+        margin-bottom: 30px;
+      }
+      @media (max-width: 600px) {
+        header {
+          flex-direction: column;
+          gap: 10px;
+        }
+        .nav-links {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="nav-links">
+        <a href="/gallery" id="gallery-link">Gallery</a>
+        <a href="/camera" id="dashboard-link">Dashboard</a>
+        <a href="/settings" id="settings-link" class="active">Settings</a>
+      </div>
+      <button class="logout-btn">Déconnexion</button>
+    </header>
+
+    <main>
+      <h2>Update Your Information</h2>
+
+      <!-- Section Modifier son email / pseudo -->
+      <section>
+        <h3>Modifier son email / pseudo</h3>
+        <form id="updateProfileForm">
+          <label for="username">Username:</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            placeholder="Enter new username"
+          />
+          <label for="email">Email:</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="Enter new email address"
+          />
+          <button type="submit">Update Profile</button>
+        </form>
+      </section>
+
+      <!-- Section Modifier son mot de passe -->
+      <section>
+        <h3>Modifier son mot de passe</h3>
+        <form id="updatePasswordForm">
+          <label for="current-password">Current Password:</label>
+          <input
+            type="password"
+            id="current-password"
+            name="current-password"
+            placeholder="Enter current password"
+            required
+          />
+          <label for="new-password">New Password:</label>
+          <input
+            type="password"
+            id="new-password"
+            name="new-password"
+            placeholder="Enter new password"
+            required
+          />
+          <label for="confirm-new-password">Confirm New Password:</label>
+          <input
+            type="password"
+            id="confirm-new-password"
+            name="confirm-new-password"
+            placeholder="Confirm new password"
+            required
+          />
+          <button type="submit">Update Password</button>
+        </form>
+      </section>
+    </main>
+
+    <footer>
+      <p>Camagru © 2024</p>
+    </footer>
+
+    <script>
+      // Soumission du formulaire de modification du profil (email/pseudo)
+      document
+        .getElementById("updateProfileForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const username = document.getElementById("username").value;
+          const email = document.getElementById("email").value;
+
+          // Envoyer uniquement les données modifiées
+          const payload = {};
+          if (username) payload.username = username;
+          if (email) payload.email = email;
+
+          if (Object.keys(payload).length === 0) {
+            alert("Veuillez modifier le pseudo ou l'email.");
+            return;
+          }
+
+          fetch("/auth/update-profile", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify(payload),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                alert("Profil mis à jour avec succès.");
+              } else {
+                alert("Erreur: " + data.message);
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+            });
+        });
+
+      // Soumission du formulaire de modification du mot de passe
+      document
+        .getElementById("updatePasswordForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const currentPassword =
+            document.getElementById("current-password").value;
+          const newPassword = document.getElementById("new-password").value;
+          const confirmNewPassword = document.getElementById(
+            "confirm-new-password"
+          ).value;
+
+          // Vérifier si les nouveaux mots de passe correspondent
+          if (newPassword !== confirmNewPassword) {
+            alert("Les nouveaux mots de passe ne correspondent pas.");
+            return;
+          }
+
+          // Vérification du mot de passe actuel
+          if (!currentPassword) {
+            alert("Veuillez entrer votre mot de passe actuel.");
+            return;
+          }
+
+          fetch("/auth/update-password", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              currentPassword: currentPassword,
+              newPassword: newPassword,
+            }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                alert("Mot de passe mis à jour avec succès.");
+              } else {
+                alert("Erreur: " + data.message);
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+            });
+        });
+    </script>
+  </body>
+</html>
+-e 
+
+==== ./src/public/auth.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camagru - Authentification</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+      <h1 class="text-2xl font-bold text-center text-gray-800 mb-8">
+        Bienvenue sur Camagru
+      </h1>
+
+      <!-- Formulaire d'inscription -->
+      <div class="mb-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Inscription</h2>
+        <form id="registerForm" class="space-y-4">
+          <div>
+            <label
+              for="registerEmail"
+              class="block text-sm font-medium text-gray-700"
+              >Email</label
+            >
+            <input
+              type="email"
+              id="registerEmail"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="registerUsername"
+              class="block text-sm font-medium text-gray-700"
+              >Nom d'utilisateur</label
+            >
+            <input
+              type="text"
+              id="registerUsername"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="registerPassword"
+              class="block text-sm font-medium text-gray-700"
+              >Mot de passe</label
+            >
+            <input
+              type="password"
+              id="registerPassword"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700"
+          >
+            S'inscrire
+          </button>
+        </form>
+      </div>
+
+      <!-- Formulaire de connexion -->
+      <div class="mt-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Connexion</h2>
+        <form id="loginForm" class="space-y-4">
+          <div>
+            <label
+              for="loginEmail"
+              class="block text-sm font-medium text-gray-700"
+              >Email</label
+            >
+            <input
+              type="email"
+              id="loginEmail"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="loginPassword"
+              class="block text-sm font-medium text-gray-700"
+              >Mot de passe</label
+            >
+            <input
+              type="password"
+              id="loginPassword"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-green-600 text-white p-2 rounded-md hover:bg-green-700"
+          >
+            Se connecter
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // Vérifier si l'utilisateur est déjà authentifié
+      window.addEventListener("load", function () {
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Utilisateur non authentifié.");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.valid) {
+              window.location.href = "/camera";
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la vérification du token", err);
+          });
+      });
+
+      // Inscription
+      document
+        .getElementById("registerForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const email = document.getElementById("registerEmail").value;
+          const username = document.getElementById("registerUsername").value;
+          const password = document.getElementById("registerPassword").value;
+
+          fetch("/auth/register", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email, username, password }),
+            credentials: "include", // Inclure les cookies
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Erreur lors de l'inscription");
+              }
+              return response.json();
+            })
+            .then((data) => {
+              alert(
+                "Inscription réussie! Veuillez vérifier votre email pour confirmer votre compte."
+              );
+            })
+            .catch((error) => {
+              console.error("Erreur lors de l'inscription:", error);
+              alert("Erreur lors de l'inscription. Veuillez réessayer.");
+            });
+        });
+
+      // Connexion
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const email = document.getElementById("loginEmail").value;
+          const password = document.getElementById("loginPassword").value;
+
+          fetch("/auth/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email, password }),
+            credentials: "include", // Inclure les cookies
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Erreur lors de la connexion");
+              }
+              return response.json();
+            })
+            .then((data) => {
+              window.location.href = "/camera"; // Rediriger vers la page caméra
+            })
+            .catch((error) => {
+              console.error("Erreur lors de la connexion:", error);
+              alert(
+                "Erreur lors de la connexion. Veuillez vérifier vos identifiants."
+              );
+            });
+        });
+    </script>
+  </body>
+</html>
+-e 
+
+==== ./src/public/camera.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camagru - Dashboard & Capture</title>
+    <style>
+      body {
+        display: grid;
+        grid-template-areas:
+          "header header"
+          "main side"
+          "footer footer";
+        grid-template-columns: 1fr 300px;
+        grid-template-rows: auto 1fr auto;
+        height: 100vh;
+        margin: 0;
+      }
+      header {
+        grid-area: header;
+        background-color: #333;
+        color: white;
+        padding: 1rem;
+        text-align: center;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .nav-links {
+        display: flex;
+        gap: 20px;
+      }
+      .nav-links a {
+        color: white;
+        text-decoration: none;
+        font-size: 1.2rem;
+        padding: 10px 15px;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+      }
+      .nav-links a.active {
+        background-color: #555;
+        border-radius: 5px;
+      }
+      footer {
+        grid-area: footer;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        padding: 1rem;
+      }
+      main {
+        grid-area: main;
+        padding: 1rem;
+        background-color: #f4f4f4;
+      }
+      aside {
+        grid-area: side;
+        background-color: #f9f9f9;
+        padding: 1rem;
+        border-left: 1px solid #ddd;
+        overflow-y: auto;
+        transition: transform 0.3s ease-in-out;
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+        margin-bottom: 10px;
+        display: block;
+      }
+      .delete-btn {
+        background-color: red;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+        margin-bottom: 20px;
+      }
+      #canvas {
+        border: 2px solid black;
+      }
+      #controls {
+        margin-top: 10px;
+      }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+      .logout-btn {
+        background-color: red;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+
+      /* Sidebar toggle button */
+      .sidebar-toggle-btn {
+        display: none;
+        background-color: #333;
+        color: white;
+        border: none;
+        padding: 10px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+      }
+
+      /* Sidebar responsive styles */
+      @media (max-width: 768px) {
+        body {
+          grid-template-areas:
+            "header"
+            "main"
+            "footer";
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr auto;
+        }
+        aside {
+          position: fixed;
+          top: 0;
+          right: 0;
+          height: 100%;
+          width: 300px;
+          transform: translateX(100%);
+          background-color: #f9f9f9;
+          box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
+        }
+        main {
+          padding: 10px;
+        }
+        header {
+          flex-direction: column;
+          gap: 10px;
+        }
+        .nav-links {
+          flex-direction: column;
+        }
+        video,
+        canvas {
+          width: 100%;
+          height: auto;
+        }
+        #controls label {
+          display: block;
+          margin-top: 10px;
+        }
+        .sidebar-toggle-btn {
+          display: block;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .nav-links a {
+          font-size: 1rem;
+        }
+        .logout-btn {
+          padding: 5px 10px;
+          font-size: 0.9rem;
+        }
+        h2,
+        h3 {
+          font-size: 1.2rem;
+        }
+        #capture,
+        #save {
+          padding: 10px;
+          font-size: 1rem;
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="nav-links">
+        <a href="/gallery" id="gallery-link">Gallery</a>
+        <a href="/camera" id="dashboard-link" class="active">Dashboard</a>
+        <a href="/settings" id="settings-link">Settings</a>
+      </div>
+      <button class="logout-btn">Déconnexion</button>
+    </header>
+
+    <button class="sidebar-toggle-btn" id="toggleSidebar">☰</button>
+
+    <main>
+      <h2>Capture de Photo avec la Webcam</h2>
+      <video id="video" width="640" height="480" autoplay></video>
+      <button id="capture">Capturer la photo</button>
+      <canvas id="canvas" width="640" height="480"></canvas>
+
+      <h3>Choisir un calque :</h3>
+      <select id="frame-select">
+        <option value="">Aucun calque</option>
+        <!-- Les calques seront chargés ici -->
+      </select>
+
+      <!-- Nouveau bouton pour uploader une image -->
+      <h3>Ou importer une image depuis votre PC :</h3>
+      <input type="file" id="image-upload" accept="image/png, image/jpeg" />
+
+      <div id="controls">
+        <h3>Contrôles du filtre :</h3>
+        <label>Position X :</label>
+        <input type="range" id="posX" min="0" max="640" value="0" />
+        <label>Position Y :</label>
+        <input type="range" id="posY" min="0" max="480" value="0" />
+        <label>Taille :</label>
+        <input type="range" id="size" min="100" max="640" value="640" />
+      </div>
+
+      <button id="save" disabled>Sauvegarder la photo</button>
+    </main>
+
+    <aside id="sidebar">
+      <h2>Images enregistrées</h2>
+      <div id="image-list"></div>
+    </aside>
+
+    <footer>
+      <p>Camagru © 2024</p>
+    </footer>
+
+    <script>
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+      const context = canvas.getContext("2d");
+      const captureButton = document.getElementById("capture");
+      const saveButton = document.getElementById("save");
+      const frameSelect = document.getElementById("frame-select");
+      const posXSlider = document.getElementById("posX");
+      const posYSlider = document.getElementById("posY");
+      const sizeSlider = document.getElementById("size");
+      const imageList = document.getElementById("image-list");
+      const imageUpload = document.getElementById("image-upload");
+      const sidebar = document.getElementById("sidebar");
+      const toggleSidebarButton = document.getElementById("toggleSidebar");
+
+      let capturedImage = null;
+      let uploadedImage = null;
+
+      // Sidebar toggle functionality
+      toggleSidebarButton.addEventListener("click", () => {
+        if (sidebar.style.transform === "translateX(0%)") {
+          sidebar.style.transform = "translateX(100%)";
+        } else {
+          sidebar.style.transform = "translateX(0%)";
+        }
+      });
+
+      // Rendre la sidebar visible à nouveau lorsqu'on repasse sur un grand écran
+      window.addEventListener("resize", () => {
+        if (window.innerWidth > 768) {
+          sidebar.style.transform = "translateX(0%)"; // Forcer la réapparition sur grand écran
+        }
+      });
+
+      // Charger dynamiquement les frames depuis le serveur
+      window.addEventListener("load", function () {
+        fetch("/auth/frames", {
+          credentials: "include",
+        })
+          .then((response) => response.json())
+          .then((frames) => {
+            frames.forEach((frame) => {
+              const option = document.createElement("option");
+              option.value = frame;
+              option.textContent = frame.replace(".png", ""); // Afficher sans l'extension
+              frameSelect.appendChild(option);
+            });
+          })
+          .catch((err) =>
+            console.error("Erreur lors du chargement des frames :", err)
+          );
+      });
+
+      // Accéder à la webcam
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((stream) => {
+          video.srcObject = stream;
+        })
+        .catch((err) => {
+          console.error("Erreur lors de l'accès à la webcam:", err);
+        });
+
+      // Capturer l'image via la webcam
+      captureButton.addEventListener("click", () => {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        capturedImage = context.getImageData(0, 0, canvas.width, canvas.height);
+        uploadedImage = null; // Annuler l'image uploadée si une photo est prise
+        saveButton.disabled = false; // Activer le bouton de sauvegarde
+        applyFilter();
+      });
+
+      // Appliquer un filtre dynamique sur l'image capturée
+      frameSelect.addEventListener("change", applyFilter);
+      posXSlider.addEventListener("input", applyFilter);
+      posYSlider.addEventListener("input", applyFilter);
+      sizeSlider.addEventListener("input", applyFilter);
+
+      function applyFilter() {
+        // Si une image uploadée existe, elle a la priorité
+        if (uploadedImage) {
+          context.clearRect(0, 0, canvas.width, canvas.height); // Effacer le canvas
+          context.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+        } else if (capturedImage) {
+          context.putImageData(capturedImage, 0, 0);
+        }
+
+        const selectedFrame = frameSelect.value;
+        if (selectedFrame) {
+          const frameImage = new Image();
+          frameImage.src = `/frames/${selectedFrame}`;
+          frameImage.onload = () => {
+            const posX = parseInt(posXSlider.value);
+            const posY = parseInt(posYSlider.value);
+            const size = parseInt(sizeSlider.value);
+            context.drawImage(frameImage, posX, posY, size, size);
+          };
+        }
+      }
+
+      // Gérer le chargement d'une image depuis le PC
+      imageUpload.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function (event) {
+          uploadedImage = new Image();
+          uploadedImage.src = event.target.result;
+
+          uploadedImage.onload = function () {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+            capturedImage = null; // Désactiver l'image capturée par la webcam si une image est uploadée
+            saveButton.disabled = false; // Activer le bouton de sauvegarde
+            applyFilter();
+          };
+        };
+
+        if (file) {
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Sauvegarder l'image
+      saveButton.addEventListener("click", () => {
+        // Vérifier qu'une image existe (soit capturée par webcam, soit uploadée)
+        if (!capturedImage && !uploadedImage) return;
+
+        const token = localStorage.getItem("token");
+        const imageData = canvas.toDataURL("image/png");
+
+        fetch("/auth/upload", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include", // Inclure les cookies
+          body: JSON.stringify({ image: imageData }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Image sauvegardée avec succès :", data);
+            loadUserImages();
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la sauvegarde de l'image :", error);
+          });
+      });
+
+      // Charger les images de l'utilisateur
+      function loadUserImages() {
+        fetch("/auth/user-images", {
+          method: "GET",
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            imageList.innerHTML = "";
+            data.forEach((image) => {
+              const imgContainer = document.createElement("div");
+              const img = document.createElement("img");
+              img.src = image.image_path;
+              img.width = 200;
+
+              const deleteButton = document.createElement("button");
+              deleteButton.classList.add("delete-btn");
+              deleteButton.textContent = "Supprimer";
+
+              const exportButton = document.createElement("button");
+              exportButton.textContent = "Exporter en PNG";
+              exportButton.style.marginLeft = "10px";
+              exportButton.addEventListener("click", () => {
+                exportImage(image.image_path);
+              });
+
+              const editButton = document.createElement("button");
+              editButton.textContent = "Modifier";
+              editButton.style.marginLeft = "10px";
+              editButton.addEventListener("click", () => {
+                editImage(image.image_path);
+              });
+
+              deleteButton.addEventListener("click", () => {
+                deleteImage(image.id);
+              });
+
+              imgContainer.appendChild(img);
+              imgContainer.appendChild(deleteButton);
+              imgContainer.appendChild(exportButton);
+              imgContainer.appendChild(editButton);
+              imageList.appendChild(imgContainer);
+            });
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la récupération des images :", error);
+          });
+      }
+
+      // Charger les images de l'utilisateur au chargement de la page
+      window.addEventListener("load", loadUserImages);
+
+      // Exporter l'image en PNG
+      function exportImage(imagePath) {
+        const a = document.createElement("a");
+        a.href = imagePath;
+        a.download = "image.png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+
+      // Modifier une image (charger dans le canvas)
+      function editImage(imagePath) {
+        const img = new Image();
+        img.src = imagePath;
+        img.onload = () => {
+          context.clearRect(0, 0, canvas.width, canvas.height); // Effacer le canvas actuel
+          context.drawImage(img, 0, 0, canvas.width, canvas.height); // Dessiner l'image sur le canvas
+          capturedImage = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          ); // Stocker l'image
+          saveButton.disabled = false; // Activer le bouton de sauvegarde
+        };
+      }
+
+      // Supprimer une image
+      function deleteImage(imageId) {
+        fetch(`/auth/delete-image/${imageId}`, {
+          method: "DELETE",
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Image supprimée avec succès :", data);
+            loadUserImages(); // Recharger la liste des images après suppression
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la suppression de l'image :", error);
+          });
+      }
+
+      window.onload = loadUserImages;
+    </script>
+  </body>
+</html>
+-e 
+
+==== ./src/public/gallery.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Galerie d'images</title>
+    <style>
+      body {
+        display: grid;
+        grid-template-areas:
+          "header"
+          "main"
+          "footer";
+        grid-template-rows: auto 1fr auto;
+        height: 100vh;
+        margin: 0;
+      }
+
+      header {
+        grid-area: header;
+        background-color: #333;
+        color: white;
+        padding: 1rem;
+        text-align: center;
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 20px;
+      }
+
+      .nav-links a {
+        color: white;
+        text-decoration: none;
+        font-size: 1.2rem;
+        padding: 10px 15px;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+      }
+
+      .nav-links a.active {
+        background-color: #555;
+        border-radius: 5px;
+      }
+
+      footer {
+        grid-area: footer;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        padding: 1rem;
+      }
+
+      main {
+        grid-area: main;
+        padding: 1rem;
+        background-color: #f4f4f4;
+        overflow-y: auto;
+      }
+
+      .logout-btn {
+        background-color: red;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+
+      img {
+        max-width: 100%;
+        height: auto;
+        margin-bottom: 10px;
+        display: block;
+      }
+
+      .image-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 10px;
+      }
+
+      .username {
+        font-weight: bold;
+        margin-left: 20px;
+      }
+
+      button {
+        margin-top: 10px;
+      }
+
+      .pagination {
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      .pagination button {
+        padding: 10px 15px;
+        margin: 0 5px;
+        background-color: #333;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      /* Responsive Design */
+      @media screen and (max-width: 768px) {
+        body {
+          grid-template-areas:
+            "header"
+            "main"
+            "footer";
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr auto;
+        }
+
+        header {
+          flex-direction: column;
+        }
+
+        .nav-links {
+          flex-direction: column;
+          align-items: center;
+          gap: 10px; /* Réduire l'espace entre les liens */
+        }
+
+        .nav-links a {
+          padding: 10px;
+          width: 100%;
+          text-align: center;
+        }
+
+        main {
+          padding: 0.5rem;
+        }
+
+        .image-container {
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+        }
+
+        img {
+          width: 100%; /* L'image prend toute la largeur sur mobile */
+          max-width: 100%;
+          height: auto;
+        }
+
+        .pagination {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .pagination button {
+          width: 100%;
+          margin-bottom: 10px; /* Ajouter un espace entre les boutons de pagination */
+        }
+
+        .logout-btn {
+          width: 100%;
+          margin-top: 10px;
+          padding: 10px 0; /* Ajuster la hauteur du bouton */
+          text-align: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="nav-links">
+        <a href="/gallery" id="gallery-link" class="active">Gallery</a>
+        <a href="/camera" id="dashboard-link">Dashboard</a>
+        <a href="/settings" id="settings-link">Settings</a>
+      </div>
+      <button class="logout-btn">Déconnexion</button>
+    </header>
+
+    <main>
+      <div id="gallery"></div>
+      <div class="pagination">
+        <button id="prev-page" disabled>Précédent</button>
+        <button id="next-page">Suivant</button>
+      </div>
+    </main>
+
+    <footer>
+      <p>Camagru © 2024</p>
+    </footer>
+
+    <script>
+      // Marquer le lien actif
+      const currentUrl = window.location.pathname;
+      if (currentUrl === "/gallery") {
+        document.getElementById("gallery-link").classList.add("active");
+      } else if (currentUrl === "/camera") {
+        document.getElementById("dashboard-link").classList.add("active");
+      } else if (currentUrl === "/settings") {
+        document.getElementById("settings-link").classList.add("active");
+      }
+
+      let currentPage = 1;
+      const imagesPerPage = 5; // Limite d'images par page
+
+      // Vérification du token au chargement
+      window.addEventListener("load", function () {
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (!response.ok) {
+              window.location.href = "/";
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la vérification du token :", err);
+            window.location.href = "/";
+          });
+
+        loadImages(currentPage); // Charger les images au chargement de la page
+      });
+
+      // Fonction de déconnexion
+      document.querySelector(".logout-btn").addEventListener("click", () => {
+        fetch("/auth/logout", {
+          method: "POST",
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (response.ok) {
+              window.location.href = "/"; // Rediriger vers la page d'accueil
+            } else {
+              throw new Error("Erreur lors de la déconnexion");
+            }
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la déconnexion :", error);
+          });
+      });
+
+      // Récupérer les images et afficher la galerie avec pagination
+      function loadImages(page) {
+        fetch(`/auth/images?page=${page}&limit=${imagesPerPage}`, {
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            const galleryDiv = document.getElementById("gallery");
+            galleryDiv.innerHTML = ""; // Vider la galerie avant de recharger
+
+            if (data.images.length === 0) {
+              galleryDiv.innerHTML = "<p>Aucune image à afficher.</p>";
+            } else {
+              data.images.forEach((image) => {
+                const imgContainer = document.createElement("div");
+                imgContainer.classList.add("image-container");
+
+                const img = document.createElement("img");
+                img.src = image.image_path;
+                img.width = 200;
+
+                // Vérifie ici que l'email est bien récupéré et affiché
+                const email = document.createElement("div");
+                email.classList.add("username");
+                email.textContent = `Par : ${
+                  image.email ? image.email : "Inconnu"
+                }`; // Afficher l'email
+
+                const likeButton = document.createElement("button");
+                const commentForm = document.createElement("form");
+                const commentInput = document.createElement("input");
+                const commentButton = document.createElement("button");
+                const commentSection = document.createElement("div");
+
+                // Charger l'état du like (vérifier si l'utilisateur a liké l'image)
+                fetch(`/auth/like-status/${image.id}`, {
+                  credentials: "include", // Inclure les cookies
+                })
+                  .then((response) => response.json())
+                  .then((likeData) => {
+                    likeButton.textContent = likeData.liked
+                      ? `Unlike (${image.likes})`
+                      : `Like (${image.likes})`;
+                  });
+
+                // Gestion des likes (ajouter ou retirer un like)
+                likeButton.addEventListener("click", () => {
+                  fetch(`/auth/like/${image.id}`, {
+                    method: "POST",
+                    credentials: "include", // Inclure les cookies
+                  })
+                    .then((response) => response.json())
+                    .then((data) => {
+                      // Mettre à jour le bouton après un like/unlike
+                      fetch(`/auth/like-status/${image.id}`, {
+                        credentials: "include", // Inclure les cookies
+                      })
+                        .then((response) => response.json())
+                        .then((likeData) => {
+                          likeButton.textContent = likeData.liked
+                            ? `Unlike (${likeData.likes})`
+                            : `Like (${likeData.likes})`;
+                        });
+                    });
+                });
+
+                // Formulaire pour ajouter un commentaire
+                commentInput.placeholder = "Ajouter un commentaire...";
+                commentButton.textContent = "Envoyer";
+                commentButton.type = "submit";
+                commentForm.appendChild(commentInput);
+                commentForm.appendChild(commentButton);
+
+                // Gestion des commentaires : soumettre un commentaire
+                commentForm.addEventListener("submit", (e) => {
+                  e.preventDefault();
+                  const comment = commentInput.value;
+                  if (comment) {
+                    fetch(`/auth/comment/${image.id}`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      credentials: "include", // Inclure les cookies
+                      body: JSON.stringify({ comment }),
+                    })
+                      .then((response) => response.json())
+                      .then((data) => {
+                        commentInput.value = ""; // Réinitialiser le champ de commentaire
+                        loadComments(image.id, commentSection); // Recharger les commentaires après ajout
+                      });
+                  }
+                });
+
+                imgContainer.appendChild(img);
+                imgContainer.appendChild(email);
+                galleryDiv.appendChild(imgContainer);
+                imgContainer.appendChild(likeButton);
+                imgContainer.appendChild(commentForm);
+                imgContainer.appendChild(commentSection);
+
+                // Charger les commentaires pour cette image
+                loadComments(image.id, commentSection);
+              });
+
+              // Mettre à jour l'état des boutons de pagination
+              const prevButton = document.getElementById("prev-page");
+              const nextButton = document.getElementById("next-page");
+
+              prevButton.disabled = page === 1;
+              nextButton.disabled = !data.hasMore;
+            }
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la récupération des images :", error);
+          });
+      }
+
+      // Fonction pour charger les commentaires d'une image
+      function loadComments(imageId, commentSection) {
+        commentSection.innerHTML = ""; // Effacer les anciens commentaires
+        fetch(`/auth/comments/${imageId}`, {
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((comments) => {
+            comments.forEach((comment) => {
+              const commentDiv = document.createElement("div");
+              commentDiv.textContent = `${comment.email} : ${comment.comment}`;
+              commentSection.appendChild(commentDiv);
+            });
+          })
+          .catch((error) => {
+            console.error(
+              "Erreur lors de la récupération des commentaires :",
+              error
+            );
+          });
+      }
+
+      // Gestion de la pagination
+      document.getElementById("prev-page").addEventListener("click", () => {
+        if (currentPage > 1) {
+          currentPage--;
+          loadImages(currentPage);
+        }
+      });
+
+      document.getElementById("next-page").addEventListener("click", () => {
+        currentPage++;
+        loadImages(currentPage);
+      });
+    </script>
+  </body>
+</html>
+-e 
+
+==== ./src/public/logout.js ====
+// Ajouter un bouton de déconnexion dynamiquement
+window.addEventListener("load", function () {
+  // Créer le bouton de déconnexion
+  const logoutBtn = document.createElement("button");
+  logoutBtn.innerText = "Déconnexion";
+  logoutBtn.classList.add(
+    "bg-red-600",
+    "text-white",
+    "p-2",
+    "rounded-md",
+    "hover:bg-red-700",
+    "fixed",
+    "top-4",
+    "right-4"
+  );
+
+  // Ajouter un listener au clic pour déconnexion
+  logoutBtn.addEventListener("click", function () {
+    fetch("/auth/logout", {
+      method: "POST",
+      credentials: "include", // Inclure les cookies
+    })
+      .then((response) => {
+        if (response.ok) {
+          window.location.href = "/"; // Rediriger vers la page d'accueil
+        } else {
+          throw new Error("Erreur lors de la déconnexion");
+        }
+      })
+      .catch((error) => {
+        console.error("Erreur lors de la déconnexion :", error);
+        window.location.href = "/";
+      });
+  });
+
+  // Ajouter le bouton à la page (en haut à droite)
+  document.body.appendChild(logoutBtn);
+});
+-e 
+
+==== ./src/routes/authRoutes.js ====
+const express = require("express");
+const router = express.Router();
+const authController = require("../controllers/authController");
+const verifyToken = require("../middleware/authMiddleware");
+
+// Route pour l'inscription
+router.post("/register", authController.register);
+
+// Route pour vérifier l'email
+router.get("/verify-email", authController.verifyEmail);
+
+// Route pour la connexion
+router.post("/login", authController.login);
+
+// Route pour la déconnexion
+router.post("/logout", authController.logout);
+
+// Route pour l'upload d'images (sécurisée avec JWT)
+router.post("/upload", verifyToken, authController.uploadImage);
+
+// Route pour afficher les images
+router.get("/images", authController.getImages);
+
+// Route pour liker une image
+router.post("/like/:imageId", verifyToken, authController.likeImage);
+
+// Route pour vérifier si l'utilisateur a déjà liké une image
+router.get("/like-status/:imageId", verifyToken, authController.likeStatus);
+
+// Route pour vérifier la validité du token
+router.post("/verify-token", verifyToken, authController.verifyToken);
+
+// Route pour ajouter un commentaire
+router.post("/comment/:imageId", verifyToken, authController.addComment);
+
+// Route pour récupérer les commentaires d'une image
+router.get("/comments/:imageId", authController.getComments);
+
+// Route pour lister les frames
+router.get("/frames", authController.getFrames);
+
+// Route pour récupérer les images de l'utilisateur
+router.get("/user-images", verifyToken, authController.getUserImages);
+
+// Route pour supprimer une image
+router.delete(
+  "/delete-image/:imageId",
+  verifyToken,
+  authController.deleteImage
+);
+
+// Nouvelle route pour la page settings (sécurisée avec le JWT)
+router.get("/settings", verifyToken, (req, res) => {
+  const filePath = path.join(__dirname, "../public/settings.html");
+  res.sendFile(filePath);
+});
+
+// router.post("/update", verifyToken, authController.updateUserDetails);
+
+// Route pour mettre à jour le profil (pseudo et email)
+router.post("/update-profile", ensureAuthenticated, updateProfile);
+
+// Route pour mettre à jour le mot de passe
+router.post("/update-password", ensureAuthenticated, updatePassword);
+
+module.exports = router;
+-e 
+
+==== ./src/app.js ====
+const express = require("express");
+const app = express();
+const port = process.env.PORT || 3000;
+const bodyParser = require("body-parser");
+const path = require("path");
+const cookieParser = require("cookie-parser"); // Importer cookie-parser
+
+// Importer la connexion à la base de données
+const db = require("../config/database");
+
+// Importer le middleware JWT pour vérifier le token
+const verifyToken = require("./middleware/authMiddleware");
+
+// Middleware pour parser les requêtes POST
+app.use(bodyParser.json({ limit: "10mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
+app.use(cookieParser()); // Utiliser cookie-parser
+app.use("/frames", express.static(path.join(__dirname, "frames"))); // Calques (frames)
+app.use(express.static(path.join(__dirname, "public")));
+
+// Protéger l'accès à la page camera.html (aucun accès direct via /camera.html)
+app.get("/camera", verifyToken, (req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "-1");
+  const filePath = path.join(__dirname, "public/camera.html");
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (!res.headersSent) {
+        return next(err); // Propager l'erreur s'il y a un problème
+      }
+    }
+  });
+});
+
+// Protéger l'accès à la page gallery.html (aucun accès direct via /gallery.html)
+app.get("/gallery", verifyToken, (req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "-1");
+  const filePath = path.join(__dirname, "public/gallery.html");
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (!res.headersSent) {
+        return next(err);
+      }
+    }
+  });
+});
+
+// Nouvelle route pour Settings
+app.get("/settings", verifyToken, (req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "-1");
+  const filePath = path.join(__dirname, "public/settings.html");
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (!res.headersSent) {
+        return next(err);
+      }
+    }
+  });
+});
+
+// Routes d'authentification
+const authRoutes = require("./routes/authRoutes");
+app.use("/auth", authRoutes);
+
+// Route pour les uploads d'images
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Route par défaut pour afficher la page d'authentification (register et login)
+app.get("/", (req, res) => {
+  const filePath = path.join(__dirname, "public/auth.html");
+  res.sendFile(filePath);
+});
+
+// Route de test de la base de données
+app.get("/test-db", (req, res) => {
+  db.query("SELECT 1 + 1 AS solution", (err, results) => {
+    if (err) {
+      res.status(500).send("Erreur avec la base de données");
+      return;
+    }
+    res.send(`La solution est : ${results[0].solution}`);
+  });
+});
+
+// Gestion globale des erreurs
+app.use((err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(500).send("Une erreur est survenue !");
+});
+
+// Démarrer le serveur
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+-e 
+
+==== ./src/controllers/authController.js ====
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const db = require("../../config/database"); // Import de la connexion à la base de données
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const sharp = require("sharp");
+const transporter = require("../../config/emailConfig");
+
+// Fonction pour vérifier le token (utilisée par /verify-token)
+exports.verifyToken = (req, res) => {
+  res.status(200).json({ valid: true });
+};
+
+// Fonction de déconnexion (logout)
+exports.logout = (req, res) => {
+  res.clearCookie("token");
+  res.status(200).json({ message: "Déconnexion réussie" });
+};
+
+// Fonction d'inscription (register)
+// Fonction d'inscription (register)
+exports.register = (req, res) => {
+  const { email, username, password } = req.body; // Inclure username
+
+  // Vérifie si l'utilisateur existe déjà par email ou par username
+  db.query(
+    "SELECT * FROM users WHERE email = ? OR username = ?",
+    [email, username],
+    (err, result) => {
+      if (err) {
+        return res.status(500).send("Erreur du serveur");
+      }
+      if (result.length > 0) {
+        if (result[0].email === email) {
+          return res.status(400).send("Cet email est déjà utilisé.");
+        }
+        if (result[0].username === username) {
+          return res.status(400).send("Ce nom d'utilisateur est déjà utilisé.");
+        }
+      }
+
+      // Hacher le mot de passe et insérer l'utilisateur dans la base de données
+      bcrypt.hash(password, 10, (err, hash) => {
+        if (err) throw err;
+        db.query(
+          "INSERT INTO users (email, username, password) VALUES (?, ?, ?)",
+          [email, username, hash],
+          (err, result) => {
+            if (err) {
+              return res
+                .status(500)
+                .send("Erreur du serveur lors de l'enregistrement");
+            }
+
+            const userId = result.insertId;
+
+            // Générer un jeton de vérification JWT
+            const verificationToken = jwt.sign(
+              { id: userId },
+              process.env.JWT_SECRET,
+              { expiresIn: "24h" } // Le jeton expire après 24 heures
+            );
+
+            // Stocker le jeton de vérification dans la base de données
+            db.query(
+              "UPDATE users SET verificationToken = ? WHERE id = ?",
+              [verificationToken, userId],
+              (err, updateResult) => {
+                if (err) {
+                  return res
+                    .status(500)
+                    .send(
+                      "Erreur du serveur lors de la mise à jour de l'utilisateur"
+                    );
+                }
+
+                // Construire le lien de vérification
+                const verificationLink = `http://localhost:3000/auth/verify-email?token=${verificationToken}`;
+
+                // Définir les options de l'email
+                const mailOptions = {
+                  from: '"Camagru Support" illidan888@hotmail.fr', // Remplacez par votre adresse email vérifiée
+                  to: email,
+                  subject: "Vérification de votre compte Camagru",
+                  html: `
+					<p>Merci de vous être inscrit sur Camagru !</p>
+					<p>Veuillez cliquer sur le lien suivant pour vérifier votre adresse email :</p>
+					<a href="${verificationLink}">Vérifier mon email</a>
+					<p>Ce lien expirera dans 24 heures.</p>
+				  `,
+                };
+
+                // Envoyer l'email de vérification
+                transporter.sendMail(mailOptions, (error, info) => {
+                  if (error) {
+                    console.error(
+                      "Erreur lors de l'envoi de l'email de vérification :",
+                      error
+                    );
+                    return res
+                      .status(500)
+                      .send(
+                        "Erreur lors de l'envoi de l'email de vérification"
+                      );
+                  }
+                  console.log("Email de vérification envoyé :", info.response);
+
+                  res.status(201).json({
+                    message:
+                      "Inscription réussie. Veuillez vérifier votre email pour confirmer votre compte.",
+                  });
+                });
+              }
+            );
+          }
+        );
+      });
+    }
+  );
+};
+
+// Fonction pour vérifier l'email
+exports.verifyEmail = (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(400).send("Jeton de vérification manquant.");
+  }
+
+  // Vérifier le jeton JWT
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      console.error("Erreur lors de la vérification du jeton :", err);
+      return res.status(400).send("Jeton de vérification invalide ou expiré.");
+    }
+
+    const userId = decoded.id;
+
+    // Trouver l'utilisateur avec ce jeton
+    db.query(
+      "SELECT * FROM users WHERE id = ? AND verificationToken = ?",
+      [userId, token],
+      (err, results) => {
+        if (err) {
+          console.error(
+            "Erreur lors de la requête à la base de données :",
+            err
+          );
+          return res.status(500).send("Erreur du serveur.");
+        }
+
+        if (results.length === 0) {
+          return res.status(400).send("Jeton de vérification invalide.");
+        }
+
+        // Mettre à jour l'utilisateur comme vérifié
+        db.query(
+          "UPDATE users SET isVerified = 1, verificationToken = NULL WHERE id = ?",
+          [userId],
+          (err, updateResult) => {
+            if (err) {
+              console.error(
+                "Erreur lors de la mise à jour de l'utilisateur :",
+                err
+              );
+              return res
+                .status(500)
+                .send("Erreur lors de la mise à jour de l'utilisateur.");
+            }
+
+            res.send(
+              "Votre email a été vérifié avec succès. Vous pouvez maintenant vous connecter."
+            );
+          }
+        );
+      }
+    );
+  });
+};
+
+// Fonction de connexion (login)
+exports.login = (req, res) => {
+  const { email, password } = req.body;
+
+  // Vérifier si l'utilisateur existe
+  db.query("SELECT * FROM users WHERE email = ?", [email], (err, result) => {
+    if (err) {
+      return res.status(500).send("Erreur du serveur");
+    }
+    if (result.length === 0) {
+      return res.status(400).send("Utilisateur non trouvé.");
+    }
+
+    const user = result[0];
+
+    // Vérifier si l'utilisateur a vérifié son email
+    if (!user.isVerified) {
+      return res
+        .status(400)
+        .send("Veuillez vérifier votre adresse email avant de vous connecter.");
+    }
+
+    // Comparer le mot de passe avec le hachage stocké
+    bcrypt.compare(password, user.password, (err, isMatch) => {
+      if (err) throw err;
+
+      if (isMatch) {
+        // Générer un token JWT
+        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+          expiresIn: "1h",
+        });
+
+        // Définir le token dans un cookie HTTP-only
+        res.cookie("token", token, {
+          httpOnly: true,
+          // secure: true, // À activer si vous utilisez HTTPS
+          maxAge: 3600000, // 1 heure en millisecondes
+        });
+
+        res.json({ message: "Connexion réussie" });
+      } else {
+        res.status(400).send("Mot de passe incorrect");
+      }
+    });
+  });
+};
+
+// Configurer multer pour stocker les images dans un dossier local
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/"); // Les images seront sauvegardées dans le dossier "uploads"
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Nom unique pour chaque fichier
+  },
+});
+const upload = multer({ storage: storage });
+// Gestion de l'upload d'images (via fichier ou via base64 pour la webcam)
+exports.uploadImage = (req, res) => {
+  const { image } = req.body;
+  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token JWT
+
+  // Vérifier si c'est une image envoyée via la webcam (Base64)
+  if (!image.startsWith("data:image/png;base64,")) {
+    return res.status(400).send("Format d'image non supporté.");
+  }
+
+  const base64Data = image.replace(/^data:image\/png;base64,/, "");
+  const userImageBuffer = Buffer.from(base64Data, "base64");
+  const filename = `${Date.now()}.png`;
+  const filePath = path.join(__dirname, "../uploads/", filename);
+
+  // Sauvegarder l'image sur le serveur
+  fs.writeFile(filePath, userImageBuffer, (err) => {
+    if (err) {
+      console.error("Erreur lors de la sauvegarde de l'image:", err);
+      return res.status(500).send("Erreur lors de la sauvegarde de l'image");
+    }
+
+    // Sauvegarder le chemin de l'image dans la base de données
+    db.query(
+      "INSERT INTO images (user_id, image_path) VALUES (?, ?)",
+      [userId, `/uploads/${filename}`],
+      (err, result) => {
+        if (err) {
+          console.error("Erreur lors de l'enregistrement de l'image:", err);
+          return res
+            .status(500)
+            .send("Erreur lors de l'enregistrement de l'image.");
+        }
+        res
+          .status(200)
+          .send({ message: "Image sauvegardée avec succès", file: filename });
+      }
+    );
+  });
+};
+
+// Récupérer les images paginées de tous les utilisateurs
+exports.getImages = (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 5;
+  const offset = (page - 1) * limit;
+
+  db.query(
+    "SELECT i.*, u.email FROM images i JOIN users u ON i.user_id = u.id ORDER BY i.created_at DESC LIMIT ? OFFSET ?",
+    [limit, offset],
+    (err, results) => {
+      if (err) {
+        console.error("Erreur lors de la récupération des images :", err);
+        return res
+          .status(500)
+          .send("Erreur lors de la récupération des images.");
+      }
+
+      // Une fois les images récupérées, comptons le nombre total d'images
+      db.query("SELECT COUNT(*) as total FROM images", (err, countResult) => {
+        if (err) {
+          console.error("Erreur lors du comptage des images :", err);
+          return res.status(500).send("Erreur lors du comptage des images.");
+        }
+
+        const totalImages = countResult[0].total;
+        const hasMore = page * limit < totalImages;
+
+        res.status(200).json({
+          images: results, // images avec l'email inclus
+          hasMore: hasMore, // booléen pour savoir s'il y a encore des images après cette page
+        });
+      });
+    }
+  );
+};
+
+// Route pour modifier le profil (email et pseudo)
+exports.updateProfile = async (req, res) => {
+  const { username, email } = req.body;
+  const userId = req.user.id; // L'ID de l'utilisateur connecté, à partir du token ou session
+
+  if (!username && !email) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Aucun changement à appliquer." });
+  }
+
+  try {
+    // Trouver l'utilisateur à partir de son ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Utilisateur non trouvé." });
+    }
+
+    // Si un nouveau pseudo est fourni, mettez-le à jour
+    if (username) {
+      user.username = username;
+    }
+
+    // Si un nouvel email est fourni, mettez-le à jour
+    if (email) {
+      // Vérifiez si l'email existe déjà dans la base de données
+      const existingUser = await User.findOne({ email });
+      if (existingUser && existingUser.id !== userId) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Cet email est déjà utilisé." });
+      }
+      user.email = email;
+    }
+
+    // Sauvegarder les changements
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Profil mis à jour avec succès." });
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour du profil:", error);
+    return res.status(500).json({ success: false, message: "Erreur serveur." });
+  }
+};
+
+// Route pour modifier le mot de passe
+exports.updatePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user.id; // L'ID de l'utilisateur connecté
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({
+      success: false,
+      message: "Veuillez fournir tous les champs requis.",
+    });
+  }
+
+  try {
+    // Trouver l'utilisateur à partir de son ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Utilisateur non trouvé." });
+    }
+
+    // Vérifier le mot de passe actuel
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Le mot de passe actuel est incorrect.",
+      });
+    }
+
+    // Hacher le nouveau mot de passe
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Mettre à jour le mot de passe de l'utilisateur
+    user.password = hashedPassword;
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Mot de passe mis à jour avec succès." });
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour du mot de passe:", error);
+    return res.status(500).json({ success: false, message: "Erreur serveur." });
+  }
+};
+
+// Fonction pour lister les fichiers de calques
+exports.getFrames = (req, res) => {
+  const framesDir = path.join(__dirname, "../frames"); // Assure-toi que ce chemin est correct
+
+  // Lire le contenu du dossier
+  fs.readdir(framesDir, (err, files) => {
+    if (err) {
+      console.error(
+        "Erreur lors de la lecture des fichiers dans frames :",
+        err
+      );
+      return res.status(500).send("Erreur lors de la récupération des frames.");
+    }
+
+    // Filtrer uniquement les fichiers PNG
+    const frameFiles = files.filter((file) => file.endsWith(".png"));
+    res.status(200).json(frameFiles); // Retourner la liste des fichiers au format JSON
+  });
+};
+
+// Fonction pour vérifier si l'utilisateur a déjà liké l'image
+exports.likeStatus = (req, res) => {
+  const imageId = req.params.imageId;
+  const userId = req.userId;
+
+  db.query(
+    "SELECT * FROM likes WHERE user_id = ? AND image_id = ?",
+    [userId, imageId],
+    (err, result) => {
+      if (err) {
+        return res
+          .status(500)
+          .send("Erreur lors de la vérification des likes.");
+      }
+
+      const liked = result.length > 0;
+      db.query(
+        "SELECT likes FROM images WHERE id = ?",
+        [imageId],
+        (err, rows) => {
+          if (err) {
+            return res
+              .status(500)
+              .send("Erreur lors de la récupération des likes.");
+          }
+          const likes = rows[0].likes;
+          res.status(200).json({ liked, likes });
+        }
+      );
+    }
+  );
+};
+
+// Fonction pour liker ou annuler un like sur une image
+exports.likeImage = (req, res) => {
+  const imageId = req.params.imageId;
+  const userId = req.userId;
+
+  // Vérifier si l'utilisateur a déjà liké l'image
+  db.query(
+    "SELECT * FROM likes WHERE user_id = ? AND image_id = ?",
+    [userId, imageId],
+    (err, result) => {
+      if (err) {
+        return res
+          .status(500)
+          .send("Erreur lors de la vérification des likes.");
+      }
+
+      if (result.length > 0) {
+        // L'utilisateur a déjà liké, on retire le like
+        db.query(
+          "DELETE FROM likes WHERE user_id = ? AND image_id = ?",
+          [userId, imageId],
+          (err, result) => {
+            if (err) {
+              return res
+                .status(500)
+                .send("Erreur lors de la suppression du like.");
+            }
+
+            // Décrémenter le compteur de likes de l'image
+            db.query(
+              "UPDATE images SET likes = likes - 1 WHERE id = ?",
+              [imageId],
+              (err, result) => {
+                if (err) {
+                  return res
+                    .status(500)
+                    .send(
+                      "Erreur lors de la mise à jour du compteur de likes."
+                    );
+                }
+
+                return res.status(200).json({ message: "Like retiré." });
+              }
+            );
+          }
+        );
+      } else {
+        // L'utilisateur n'a pas encore liké, on ajoute le like
+        db.query(
+          "INSERT INTO likes (user_id, image_id) VALUES (?, ?)",
+          [userId, imageId],
+          (err, result) => {
+            if (err) {
+              return res.status(500).send("Erreur lors de l'ajout du like.");
+            }
+
+            // Incrémenter le compteur de likes de l'image
+            db.query(
+              "UPDATE images SET likes = likes + 1 WHERE id = ?",
+              [imageId],
+              (err, result) => {
+                if (err) {
+                  return res
+                    .status(500)
+                    .send(
+                      "Erreur lors de la mise à jour du compteur de likes."
+                    );
+                }
+
+                return res.status(200).json({ message: "Like ajouté." });
+              }
+            );
+          }
+        );
+      }
+    }
+  );
+};
+
+// Fonction pour ajouter un commentaire
+exports.addComment = (req, res) => {
+  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le middleware
+  const { comment } = req.body; // Récupérer le commentaire
+  const imageId = req.params.imageId; // L'ID de l'image à commenter
+
+  // Vérifier que le commentaire n'est pas vide
+  if (!comment || comment.trim() === "") {
+    return res.status(400).send("Le commentaire ne peut pas être vide.");
+  }
+
+  // Insérer le commentaire dans la base de données
+  db.query(
+    "INSERT INTO comments (image_id, user_id, comment) VALUES (?, ?, ?)",
+    [imageId, userId, comment],
+    (err, result) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send("Erreur lors de l'ajout du commentaire.");
+      }
+      res.status(201).send({ message: "Commentaire ajouté avec succès." });
+    }
+  );
+};
+
+// Fonction pour récupérer les commentaires d'une image
+exports.getComments = (req, res) => {
+  const imageId = req.params.imageId;
+
+  db.query(
+    "SELECT comments.comment, comments.created_at, users.email FROM comments JOIN users ON comments.user_id = users.id WHERE image_id = ? ORDER BY comments.created_at DESC",
+    [imageId],
+    (err, results) => {
+      if (err) {
+        console.error(err);
+        return res
+          .status(500)
+          .send("Erreur lors de la récupération des commentaires.");
+      }
+      res.status(200).json(results);
+    }
+  );
+};
+
+// Récupérer les images de l'utilisateur connecté
+exports.getUserImages = (req, res) => {
+  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token
+
+  db.query(
+    "SELECT * FROM images WHERE user_id = ?",
+    [userId],
+    (err, results) => {
+      if (err) {
+        console.error(
+          "Erreur lors de la récupération des images de l'utilisateur :",
+          err
+        );
+        return res
+          .status(500)
+          .send("Erreur lors de la récupération des images.");
+      }
+      res.status(200).json(results);
+    }
+  );
+};
+
+// Supprimer une image
+exports.deleteImage = (req, res) => {
+  const imageId = req.params.imageId;
+  const userId = req.userId; // ID de l'utilisateur connecté
+
+  // Vérifier que l'image appartient à l'utilisateur avant de la supprimer
+  db.query(
+    "DELETE FROM images WHERE id = ? AND user_id = ?",
+    [imageId, userId],
+    (err, result) => {
+      if (err) {
+        console.error("Erreur lors de la suppression de l'image :", err);
+        return res
+          .status(500)
+          .send("Erreur lors de la suppression de l'image.");
+      }
+      res.status(200).send({ message: "Image supprimée avec succès" });
+    }
+  );
+};
+-e 
+
+==== ./src/models/User.js ====
+const db = require("../../config/database");
+const bcrypt = require("bcrypt");
+
+// Fonction pour trouver un utilisateur par email
+const findUserByEmail = (email, callback) => {
+  db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
+    if (err) return callback(err);
+    callback(null, results[0]);
+  });
+};
+
+// Fonction pour créer un nouvel utilisateur
+const createUser = (email, password, callback) => {
+  // Hachage du mot de passe
+  bcrypt.hash(password, 10, (err, hash) => {
+    if (err) return callback(err);
+
+    // Insérer l'utilisateur dans la base de données
+    db.query(
+      "INSERT INTO users (email, password) VALUES (?, ?)",
+      [email, hash],
+      (err, results) => {
+        if (err) return callback(err);
+        callback(null, results);
+      }
+    );
+  });
+};
+
+// Fonction pour comparer un mot de passe avec le haché
+const comparePassword = (password, hash, callback) => {
+  console.log("Mot de passe fourni pour la comparaison:", password); // Log du mot de passe fourni
+  console.log("Mot de passe haché stocké dans la base de données:", hash); // Log du hash dans la BDD
+
+  bcrypt.compare(password, hash, (err, isMatch) => {
+    if (err) return callback(err);
+    console.log("Le mot de passe correspond-il ?", isMatch); // Ajoute un log pour vérifier si ça correspond
+    callback(null, isMatch);
+  });
+};
+
+module.exports = {
+  findUserByEmail,
+  createUser,
+  comparePassword,
+};
+-e 
+
