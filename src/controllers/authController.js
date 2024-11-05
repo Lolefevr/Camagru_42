@@ -7,6 +7,11 @@ const fs = require("fs");
 const sharp = require("sharp");
 const transporter = require("../../config/emailConfig");
 
+// Fonction pour obtenir le token CSRF
+exports.getCsrfToken = (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+};
+
 // Fonction pour vérifier le token (utilisée par /verify-token)
 exports.verifyToken = (req, res) => {
   res.status(200).json({ valid: true });
