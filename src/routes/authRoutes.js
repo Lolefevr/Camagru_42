@@ -42,7 +42,6 @@ router.get("/frames", authController.getFrames);
 
 // Route pour récupérer les images de l'utilisateur
 router.get("/user-images", verifyToken, authController.getUserImages);
-
 // Route pour supprimer une image
 router.delete(
   "/delete-image/:imageId",
@@ -52,7 +51,7 @@ router.delete(
 
 // Nouvelle route pour la page settings (sécurisée avec le JWT)
 router.get("/settings", verifyToken, (req, res) => {
-  const filePath = path.join(__dirname, "../public/settings.html");
+  const filePath = path.join(dirname, "../public/settings.html");
   res.sendFile(filePath);
 });
 
