@@ -5,5 +5,6 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL,
   isVerified TINYINT(1) DEFAULT 0,
   verificationToken VARCHAR(255) DEFAULT NULL,
+  receive_email_notifications TINYINT(1) DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

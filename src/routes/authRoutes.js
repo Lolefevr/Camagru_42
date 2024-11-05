@@ -73,4 +73,11 @@ router.get("/reset-password", (req, res) => {
 // Route pour la réinitialisation du mot de passe (mot de passe oublié)
 router.post("/reset-password", authController.resetPassword);
 
+// Route pour mettre à jour la préférence de notification
+// router.post(
+//   "/update-notification-preference",
+//   verifyToken,
+//   authController.updateNotificationPreference
+// );
+
 module.exports = router;

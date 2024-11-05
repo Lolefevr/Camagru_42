@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <link rel="icon" type="image/x-icon" href="/favicon_cam.ico" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Camagru - Settings</title>
@@ -145,6 +146,26 @@
     </header>
 
     <main>
+      <section class="section">
+        <h3>Préférences de notification</h3>
+        <form id="notificationPreferenceForm">
+          <label>
+            <input
+              type="radio"
+              name="receiveEmailNotifications"
+              value="1"
+              checked
+            />
+            Recevoir des notifications par email pour les nouveaux commentaires
+          </label>
+          <br />
+          <label>
+            <input type="radio" name="receiveEmailNotifications" value="0" />
+            Ne pas recevoir de notifications
+          </label>
+          <button type="submit">Enregistrer les préférences</button>
+        </form>
+      </section>
       <!-- Section Mot de passe oublié -->
       <section class="section">
         <h3>Mot de passe oublié ?</h3>
@@ -198,6 +219,18 @@
       <section class="section">
         <h3>Modifier son mot de passe</h3>
         <form id="updatePasswordForm">
+          <!-- Hidden field for the username for accessibility and password managers -->
+          <input
+            type="text"
+            id="username_hidden_password"
+            name="username"
+            autocomplete="username"
+            value="NomUtilisateur"
+            style="position: absolute; left: -9999px; width: 1px; height: 1px"
+            aria-hidden="true"
+            tabindex="-1"
+          />
+          <!-- Rest of your form fields -->
           <label for="current-password">Mot de passe actuel :</label>
           <input
             type="password"
@@ -205,7 +238,10 @@
             name="current-password"
             placeholder="Entrer le mot de passe actuel"
             required
+            autocomplete="current-password"
           />
+          <!-- Additional form fields -->
+
           <label for="new-password">Nouveau mot de passe :</label>
           <input
             type="password"
@@ -213,7 +249,9 @@
             name="new-password"
             placeholder="Entrer un nouveau mot de passe"
             required
+            autocomplete="new-password"
           />
+
           <label for="confirm-new-password"
             >Confirmer le nouveau mot de passe :</label
           >
@@ -223,7 +261,9 @@
             name="confirm-new-password"
             placeholder="Confirmer le nouveau mot de passe"
             required
+            autocomplete="new-password"
           />
+
           <button type="submit">Mettre à jour le mot de passe</button>
         </form>
       </section>
@@ -302,6 +342,52 @@
             .catch((error) => console.error("Erreur:", error));
         });
       // Soumission du formulaire de modification du mot de passe
+      // Fonction de validation de mot de passe
+      function validatePassword(password) {
+        const minLength = 12;
+        const upperCaseRegex = /[A-Z]/;
+        const lowerCaseRegex = /[a-z]/;
+        const numberRegex = /[0-9]/;
+        const specialCharRegex = /[!@#$%^&*(),.?":{}|<>]/;
+
+        if (password.length < minLength) {
+          return {
+            isValid: false,
+            message: `Le mot de passe doit contenir au moins ${minLength} caractères.`,
+          };
+        }
+        if (!upperCaseRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins une lettre majuscule.",
+          };
+        }
+        if (!lowerCaseRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins une lettre minuscule.",
+          };
+        }
+        if (!numberRegex.test(password)) {
+          return {
+            isValid: false,
+            message: "Le mot de passe doit contenir au moins un chiffre.",
+          };
+        }
+        if (!specialCharRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins un caractère spécial.",
+          };
+        }
+
+        return { isValid: true, message: "" };
+      }
+
+      // Soumission du formulaire de modification du mot de passe
       document
         .getElementById("updatePasswordForm")
         .addEventListener("submit", function (e) {
@@ -313,10 +399,18 @@
             "confirm-new-password"
           ).value;
 
+          // Vérifie si le nouveau mot de passe est conforme aux critères de sécurité
+          const passwordValidation = validatePassword(newPassword);
+          if (!passwordValidation.isValid) {
+            alert(passwordValidation.message);
+            return; // Arrête la soumission si le mot de passe est invalide
+          }
+
           if (newPassword !== confirmNewPassword) {
             alert("Les nouveaux mots de passe ne correspondent pas.");
             return;
           }
+
           const token = localStorage.getItem("token");
           fetch("/auth/update-password", {
             method: "POST",
@@ -371,6 +465,37 @@
             })
             .catch((error) => console.error("Erreur:", error));
         });
+
+      // Soumission du formulaire de préférence de notification
+      document
+        .getElementById("notificationPreferenceForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const receiveEmailNotifications = document.querySelector(
+            'input[name="receiveEmailNotifications"]:checked'
+          ).value;
+
+          const token = localStorage.getItem("token");
+          fetch("/auth/update-notification-preference", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+            body: JSON.stringify({ receiveEmailNotifications }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              alert(
+                data.success
+                  ? "Préférences de notification mises à jour avec succès."
+                  : `Erreur: ${data.message}`
+              );
+            })
+            .catch((error) => console.error("Erreur:", error));
+        });
     </script>
+    <script src="logout.js"></script>
   </body>
 </html>
