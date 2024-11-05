@@ -145,6 +145,26 @@
     </header>
 
     <main>
+      <!-- Section Mot de passe oublié -->
+      <section class="section">
+        <h3>Mot de passe oublié ?</h3>
+        <button id="forgot-password-btn">Réinitialiser le mot de passe</button>
+      </section>
+
+      <!-- Dialogue de demande d'email pour réinitialisation -->
+      <div id="forgot-password-dialog" style="display: none">
+        <h3>Réinitialiser votre mot de passe</h3>
+        <label for="forgot-email">Entrez votre adresse email :</label>
+        <input
+          type="email"
+          id="forgot-email"
+          placeholder="Votre adresse email"
+        />
+        <button id="send-reset-link">
+          Envoyer le lien de réinitialisation
+        </button>
+      </div>
+
       <!-- Informations utilisateur affichées en haut -->
       <div class="user-info">
         <h3>Informations de l'utilisateur</h3>
@@ -314,6 +334,40 @@
                   ? "Mot de passe mis à jour avec succès."
                   : `Erreur: ${data.message}`
               );
+            })
+            .catch((error) => console.error("Erreur:", error));
+        });
+      // Ouvrir la boîte de dialogue de mot de passe oublié
+      document
+        .getElementById("forgot-password-btn")
+        .addEventListener("click", () => {
+          document.getElementById("forgot-password-dialog").style.display =
+            "block";
+        });
+
+      // Envoyer l'email de réinitialisation de mot de passe
+      document
+        .getElementById("send-reset-link")
+        .addEventListener("click", () => {
+          const email = document.getElementById("forgot-email").value;
+
+          fetch("/auth/forgot-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                alert(
+                  "Un lien de réinitialisation a été envoyé à votre email."
+                );
+                document.getElementById(
+                  "forgot-password-dialog"
+                ).style.display = "none";
+              } else {
+                alert(`Erreur: ${data.message}`);
+              }
             })
             .catch((error) => console.error("Erreur:", error));
         });

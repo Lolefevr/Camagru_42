@@ -730,3 +730,114 @@ exports.deleteImage = (req, res) => {
     }
   );
 };
+
+// Fonction pour réinitialiser le mot de passe (mot de passe oublié)
+exports.forgotPassword = (req, res) => {
+  const { email } = req.body;
+
+  // Vérifier si l'utilisateur existe dans la base de données
+  db.query("SELECT * FROM users WHERE email = ?", [email], (err, result) => {
+    if (err) {
+      console.error("Erreur serveur:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Erreur serveur." });
+    }
+
+    if (result.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Email non trouvé." });
+    }
+
+    const userId = result[0].id;
+
+    // Générer un token de réinitialisation de mot de passe
+    const resetToken = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    // Définir les options de l'email
+    const mailOptions = {
+      from: '"Camagru Support" illidan888@hotmail.fr',
+      to: email,
+      subject: "Réinitialisation de votre mot de passe Camagru",
+      html: `
+		  <p>Bonjour,</p>
+		  <p>Cliquez sur le lien suivant pour réinitialiser votre mot de passe :</p>
+		  <a href="http://localhost:3000/auth/reset-password?token=${resetToken}">Réinitialiser mon mot de passe</a>
+		  <p>Ce lien expirera dans 1 heure.</p>
+		`,
+    };
+
+    // Envoyer l'email de réinitialisation
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Erreur d'envoi d'email:", error);
+        return res
+          .status(500)
+          .json({ success: false, message: "Erreur d'envoi d'email." });
+      }
+      console.log("Email de réinitialisation envoyé:", info.response);
+      res.json({
+        success: true,
+        message: "Lien de réinitialisation envoyé par email.",
+      });
+    });
+  });
+};
+
+// Fonction pour réinitialiser le mot de passe après que l'utilisateur ait cliqué sur le lien
+exports.resetPassword = (req, res) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Paramètres manquants." });
+  }
+
+  // Vérifier le token JWT
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      console.error("Erreur de vérification du token :", err);
+      return res
+        .status(400)
+        .json({ success: false, message: "Token invalide ou expiré." });
+    }
+
+    const userId = decoded.id;
+
+    // Hacher le nouveau mot de passe
+    bcrypt.hash(newPassword, 10, (err, hashedPassword) => {
+      if (err) {
+        console.error("Erreur lors du hachage du mot de passe :", err);
+        return res
+          .status(500)
+          .json({ success: false, message: "Erreur serveur." });
+      }
+
+      // Mettre à jour le mot de passe dans la base de données
+      db.query(
+        "UPDATE users SET password = ? WHERE id = ?",
+        [hashedPassword, userId],
+        (err, result) => {
+          if (err) {
+            console.error(
+              "Erreur lors de la mise à jour du mot de passe :",
+              err
+            );
+            return res
+              .status(500)
+              .json({ success: false, message: "Erreur serveur." });
+          }
+
+          res.status(200).json({
+            success: true,
+            message: "Mot de passe réinitialisé avec succès.",
+          });
+        }
+      );
+    });
+  });
+};
