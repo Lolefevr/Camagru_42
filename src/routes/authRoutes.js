@@ -61,13 +61,13 @@ router.get("/user-info", verifyToken, authController.getUserInfo);
 router.post("/update-profile", verifyToken, authController.updateProfile);
 router.post("/update-password", verifyToken, authController.updatePassword);
 // Route pour la réinitialisation de mot de passe (mot de passe oublié)
-router.post("/forgot-password", authController.forgotPassword);
+//router.post("/forgot-password", authController.forgotPassword);
 
-router.get("/reset-password", (req, res) => {
-  const filePath = path.join(dirname, "../public/reset-password.html");
-  res.sendFile(filePath);
-});
+//router.get("/reset-password", (req, res) => {
+//  const filePath = path.join(dirname, "../public/reset-password.html");
+//  res.sendFile(filePath);
+//});
 
-router.post("/reset-password", authController.resetPassword);
+//router.post("/reset-password", authController.resetPassword);
 
 module.exports = router;
