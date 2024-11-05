@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const path = require("path");
 const authController = require("../controllers/authController");
 const verifyToken = require("../middleware/authMiddleware");
 
@@ -64,10 +65,11 @@ router.post("/update-password", verifyToken, authController.updatePassword);
 router.post("/forgot-password", authController.forgotPassword);
 
 router.get("/reset-password", (req, res) => {
-  const filePath = path.join(dirname, "../public/reset-password.html");
+  const filePath = path.join(__dirname, "../public/reset-password.html");
   res.sendFile(filePath);
 });
 
+// Route pour la réinitialisation du mot de passe (mot de passe oublié)
 router.post("/reset-password", authController.resetPassword);
 
 module.exports = router;
