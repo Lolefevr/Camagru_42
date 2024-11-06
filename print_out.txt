@@ -2345,3 +2345,3250 @@ module.exports = {
 };
 -e 
 
+==== ./src/testEmail.js ====
+// ./src/testEmail.js
+const transporter = require("../config/emailConfig");
+
+const mailOptions = {
+  from: '"Camagru Support" illidan888@hotmail.fr', // Remplace par ton exp√©diteur v√©rifi√©
+  to: "illidan888@hotmail.fr", // Remplace par ton adresse email de test
+  subject: "Test d'envoi d'email avec SendinBlue",
+  text: "Bonjour,\n\nCeci est un email de test pour v√©rifier la configuration de SendinBlue.\n\nMerci !",
+  html: "<p>Bonjour,</p><p>Ceci est un email de test pour v√©rifier la configuration de SendinBlue.</p><p>Merci !</p>",
+};
+
+transporter.sendMail(mailOptions, (error, info) => {
+  if (error) {
+    return console.error("Erreur lors de l'envoi de l'email de test:", error);
+  }
+  console.log("Email de test envoy√© avec succ√®s:", info.response);
+});
+-e 
+
+==== ./src/middleware/authMiddleware.js ====
+const jwt = require("jsonwebtoken");
+const db = require("../../config/database");
+
+const verifyToken = (req, res, next) => {
+  const token = req.cookies.token; // R√©cup√©rer le token depuis le cookie
+
+  if (!token) {
+    if (req.accepts("html")) {
+      return res.redirect("/");
+    } else {
+      return res.status(403).json({ message: "Un token est requis." });
+    }
+  }
+
+  // V√©rifier le token JWT
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      if (req.accepts("html")) {
+        return res.redirect("/");
+      } else {
+        return res.status(401).json({ message: "Token invalide ou expir√©." });
+      }
+    }
+
+    // V√©rifier que l'utilisateur existe dans la base de donn√©es
+    const userId = decoded.id;
+    db.query("SELECT * FROM users WHERE id = ?", [userId], (err, result) => {
+      if (err) {
+        console.error("Erreur lors de la requ√™te √† la base de donn√©es :", err);
+        return res.status(500).send("Erreur du serveur.");
+      }
+
+      if (result.length === 0) {
+        if (req.accepts("html")) {
+          return res.redirect("/");
+        } else {
+          return res.status(404).json({ message: "Utilisateur non trouv√©." });
+        }
+      }
+
+      // Utilisateur trouv√©, continuer
+      req.userId = userId;
+      next();
+    });
+  });
+};
+
+module.exports = verifyToken;
+-e 
+
+==== ./src/public/settings.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="icon" type="image/x-icon" href="/favicon_cam.ico" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camagru - Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="flex flex-col min-h-screen bg-gray-100">
+    <!-- Header -->
+    <header
+      class="bg-gray-800 text-white p-4 flex justify-between items-center"
+    >
+      <nav class="flex space-x-4">
+        <a href="/gallery" class="hover:text-gray-300">Gallery</a>
+        <a href="/camera" class="hover:text-gray-300">Dashboard</a>
+        <a href="/settings" class="text-gray-300 font-semibold">Settings</a>
+      </nav>
+      <button
+        class="logout-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+      >
+        D√©connexion
+      </button>
+    </header>
+
+    <!-- Main content -->
+    <main
+      class="flex-1 p-6 grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+    >
+      <!-- Pr√©f√©rences de notification avec switch -->
+      <section class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-4 border-b pb-2">
+          Pr√©f√©rences de notification
+        </h3>
+        <form id="notificationPreferenceForm">
+          <div class="flex items-center justify-between">
+            <span
+              >Recevoir des notifications par email pour les nouveaux
+              commentaires</span
+            >
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                class="sr-only peer"
+                id="notificationSwitch"
+              />
+              <div
+                class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500"
+              ></div>
+              <div
+                class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-all peer-checked:translate-x-full"
+              ></div>
+            </label>
+          </div>
+          <button
+            type="submit"
+            class="mt-4 w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-600"
+          >
+            Enregistrer les pr√©f√©rences
+          </button>
+        </form>
+      </section>
+
+      <!-- Section Mot de passe oubli√© -->
+      <section class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-4 border-b pb-2">
+          Mot de passe oubli√© ?
+        </h3>
+        <button
+          id="forgot-password-btn"
+          class="w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-600"
+        >
+          R√©initialiser le mot de passe
+        </button>
+        <div id="forgot-password-dialog" class="hidden mt-4">
+          <label for="forgot-email" class="block font-semibold"
+            >Entrez votre adresse email :</label
+          >
+          <input
+            type="email"
+            id="forgot-email"
+            placeholder="Votre adresse email"
+            class="w-full px-3 py-2 border rounded mt-2"
+          />
+          <button
+            id="send-reset-link"
+            class="mt-2 w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-600"
+          >
+            Envoyer le lien de r√©initialisation
+          </button>
+        </div>
+      </section>
+
+      <!-- Informations utilisateur -->
+      <section class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-4 border-b pb-2">
+          Informations de l'utilisateur
+        </h3>
+        <p>
+          Email :
+          <span id="user-email" class="text-gray-700">Chargement...</span>
+        </p>
+        <p>
+          Nom d'utilisateur :
+          <span id="user-username" class="text-gray-700">Chargement..</span>
+        </p>
+      </section>
+
+      <!-- Section Modifier son email / pseudo -->
+      <section class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-4 border-b pb-2">
+          Modifier son email / pseudo
+        </h3>
+        <form id="updateProfileForm" class="space-y-4">
+          <div>
+            <label for="username" class="block font-semibold"
+              >Nom d'utilisateur :</label
+            >
+            <input
+              type="text"
+              id="username"
+              name="username"
+              placeholder="Entrer un nouveau nom d'utilisateur"
+              class="w-full px-3 py-2 border rounded"
+            />
+          </div>
+          <div>
+            <label for="email" class="block font-semibold">Email :</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              class="w-full px-3 py-2 border rounded"
+              placeholder="Nouvelle adresse email"
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-600"
+          >
+            Mettre √† jour le profil
+          </button>
+        </form>
+      </section>
+
+      <!-- Section Modifier son mot de passe -->
+      <section class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-4 border-b pb-2">
+          Modifier son mot de passe
+        </h3>
+        <form id="updatePasswordForm" class="space-y-4">
+          <!-- Champ de nom d'utilisateur cach√© -->
+          <input
+            type="text"
+            id="username_hidden_password"
+            name="username"
+            autocomplete="username"
+            value="NomUtilisateur"
+            style="display: none"
+            aria-hidden="true"
+          />
+
+          <div>
+            <label for="current-password" class="block font-semibold">
+              Mot de passe actuel :
+            </label>
+            <input
+              type="password"
+              id="current-password"
+              name="current-password"
+              placeholder="Entrer le mot de passe actuel"
+              required
+              autocomplete="current-password"
+              class="w-full px-3 py-2 border rounded"
+            />
+          </div>
+
+          <div>
+            <label for="new-password" class="block font-semibold">
+              Nouveau mot de passe :
+            </label>
+            <input
+              type="password"
+              id="new-password"
+              name="new-password"
+              placeholder="Entrer un nouveau mot de passe"
+              required
+              autocomplete="new-password"
+              class="w-full px-3 py-2 border rounded"
+            />
+          </div>
+
+          <div>
+            <label for="confirm-new-password" class="block font-semibold">
+              Confirmer le nouveau mot de passe :
+            </label>
+            <input
+              type="password"
+              id="confirm-new-password"
+              name="confirm-new-password"
+              placeholder="Confirmer le nouveau mot de passe"
+              required
+              autocomplete="new-password"
+              class="w-full px-3 py-2 border rounded"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-600"
+          >
+            Mettre √† jour le mot de passe
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white text-center p-4">
+      <p>Camagru ¬© 2024</p>
+    </footer>
+
+    <script>
+      async function getCsrfToken() {
+        try {
+          const response = await fetch("/auth/csrf-token", {
+            credentials: "include",
+          });
+          if (!response.ok)
+            throw new Error("√âchec de l'obtention du token CSRF");
+          const data = await response.json();
+          return data.csrfToken;
+        } catch (error) {
+          console.error("Erreur lors de la r√©cup√©ration du token CSRF:", error);
+          alert(
+            "Erreur lors de la r√©cup√©ration du token CSRF. Veuillez r√©essayer plus tard."
+          );
+          throw error;
+        }
+      }
+
+      function escapeHTML(str) {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      async function handlePostRequest(url, body) {
+        const csrfToken = await getCsrfToken();
+        const token = localStorage.getItem("token");
+        return fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            "CSRF-Token": csrfToken,
+          },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+      }
+
+      document
+        .getElementById("notificationPreferenceForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const receiveEmailNotifications = document.getElementById(
+            "notificationSwitch"
+          ).checked
+            ? "1"
+            : "0";
+          try {
+            const response = await handlePostRequest(
+              "/auth/update-notification-preference",
+              { receiveEmailNotifications }
+            );
+            const data = await response.json();
+            alert(
+              data.success
+                ? "Pr√©f√©rences de notification mises √† jour avec succ√®s."
+                : `Erreur: ${data.message}`
+            );
+          } catch (error) {
+            console.error("Erreur:", error);
+          }
+        });
+
+      document
+        .getElementById("updateProfileForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const username = document.getElementById("username").value;
+          const email = document.getElementById("email").value;
+
+          try {
+            const response = await handlePostRequest("/auth/update-profile", {
+              username,
+              email,
+            });
+            const data = await response.json();
+            alert(
+              data.success
+                ? "Profil mis √† jour avec succ√®s."
+                : `Erreur: ${data.message}`
+            );
+            if (data.success) {
+              loadUserInfo(); // Rafra√Æchir les informations de l'utilisateur sans recharger la page
+            }
+          } catch (error) {
+            console.error("Erreur:", error);
+          }
+        });
+
+      document
+        .getElementById("updatePasswordForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const currentPassword =
+            document.getElementById("current-password").value;
+          const newPassword = document.getElementById("new-password").value;
+          const confirmNewPassword = document.getElementById(
+            "confirm-new-password"
+          ).value;
+
+          // V√©rifie si le nouveau mot de passe est conforme aux crit√®res de s√©curit√©
+          const passwordValidation = validatePassword(newPassword);
+          if (!passwordValidation.isValid) {
+            alert(passwordValidation.message);
+            return; // Arr√™te la soumission si le mot de passe est invalide
+          }
+
+          if (newPassword !== confirmNewPassword) {
+            alert("Les nouveaux mots de passe ne correspondent pas.");
+            return;
+          }
+
+          handlePostRequest("/auth/update-password", {
+            currentPassword,
+            newPassword,
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              alert(
+                data.success
+                  ? "Mot de passe mis √† jour avec succ√®s."
+                  : `Erreur: ${data.message}`
+              );
+            })
+            .catch((error) => {
+              console.error("Erreur:", error);
+            });
+        });
+
+      document
+        .getElementById("forgot-password-btn")
+        .addEventListener("click", () => {
+          document
+            .getElementById("forgot-password-dialog")
+            .classList.toggle("hidden");
+        });
+
+      document
+        .getElementById("send-reset-link")
+        .addEventListener("click", async () => {
+          const email = document.getElementById("forgot-email").value;
+          try {
+            const response = await handlePostRequest("/auth/forgot-password", {
+              email,
+            });
+            const data = await response.json();
+            alert(
+              data.success
+                ? "Un lien de r√©initialisation a √©t√© envoy√© √† votre email."
+                : `Erreur: ${data.message}`
+            );
+            if (data.success)
+              document
+                .getElementById("forgot-password-dialog")
+                .classList.add("hidden");
+          } catch (error) {
+            console.error("Erreur:", error);
+          }
+        });
+
+      window.addEventListener("load", loadUserInfo);
+
+      function loadUserInfo() {
+        fetch("/auth/user-info", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          credentials: "include",
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success && data.user) {
+              document.getElementById("user-email").textContent = escapeHTML(
+                data.user.email
+              );
+              document.getElementById("user-username").textContent = escapeHTML(
+                data.user.username
+              );
+            }
+          })
+          .catch((error) =>
+            console.error("Erreur lors de la requ√™te utilisateur :", error)
+          );
+      }
+      // Fonction de validation de mot de passe
+      function validatePassword(password) {
+        const minLength = 12;
+        const upperCaseRegex = /[A-Z]/;
+        const lowerCaseRegex = /[a-z]/;
+        const numberRegex = /[0-9]/;
+        const specialCharRegex = /[!@#$%^&*(),.?":{}|<>]/;
+
+        if (password.length < minLength) {
+          return {
+            isValid: false,
+            message: `Le mot de passe doit contenir au moins ${minLength} caract√®res.`,
+          };
+        }
+        if (!upperCaseRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins une lettre majuscule.",
+          };
+        }
+        if (!lowerCaseRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins une lettre minuscule.",
+          };
+        }
+        if (!numberRegex.test(password)) {
+          return {
+            isValid: false,
+            message: "Le mot de passe doit contenir au moins un chiffre.",
+          };
+        }
+        if (!specialCharRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins un caract√®re sp√©cial.",
+          };
+        }
+
+        return { isValid: true, message: "" };
+      }
+    </script>
+    <script src="logout.js"></script>
+  </body>
+</html>
+-e 
+
+==== ./src/public/auth.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="icon" type="image/x-icon" href="/favicon_cam.ico" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camagru - Authentification</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+      <h1 class="text-2xl font-bold text-center text-gray-800 mb-8">
+        Bienvenue sur Camagru
+      </h1>
+
+      <!-- Formulaire d'inscription -->
+      <div class="mb-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Inscription</h2>
+        <form id="registerForm" class="space-y-4">
+          <div>
+            <label
+              for="registerEmail"
+              class="block text-sm font-medium text-gray-700"
+              >Email</label
+            >
+            <input
+              type="email"
+              id="registerEmail"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="registerUsername"
+              class="block text-sm font-medium text-gray-700"
+              >Nom d'utilisateur</label
+            >
+            <input
+              type="text"
+              id="registerUsername"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="registerPassword"
+              class="block text-sm font-medium text-gray-700"
+              >Mot de passe</label
+            >
+            <input
+              type="password"
+              id="registerPassword"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700"
+          >
+            S'inscrire
+          </button>
+        </form>
+      </div>
+
+      <!-- Formulaire de connexion -->
+      <div class="mt-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Connexion</h2>
+        <form id="loginForm" class="space-y-4">
+          <div>
+            <label
+              for="loginEmail"
+              class="block text-sm font-medium text-gray-700"
+              >Email</label
+            >
+            <input
+              type="email"
+              id="loginEmail"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="loginPassword"
+              class="block text-sm font-medium text-gray-700"
+              >Mot de passe</label
+            >
+            <input
+              type="password"
+              id="loginPassword"
+              class="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:border-indigo-400"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-green-600 text-white p-2 rounded-md hover:bg-green-700"
+          >
+            Se connecter
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      function getCsrfToken() {
+        return fetch("/auth/csrf-token", {
+          credentials: "include", // Inclure les cookies dans la requ√™te
+        })
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("√âchec de l'obtention du token CSRF");
+            }
+            return res.json();
+          })
+          .then((data) => data.csrfToken)
+          .catch((error) => {
+            console.error(
+              "Erreur lors de la r√©cup√©ration du token CSRF:",
+              error
+            );
+            alert(
+              "Erreur lors de la r√©cup√©ration du token CSRF. Veuillez r√©essayer plus tard."
+            );
+            throw error; // Propager l'erreur pour qu'elle puisse √™tre g√©r√©e ailleurs si n√©cessaire
+          });
+      }
+
+      // Fonction de validation de mot de passe s√©curis√©
+      function validatePassword(password) {
+        const minLength = 12;
+        const upperCaseRegex = /[A-Z]/;
+        const lowerCaseRegex = /[a-z]/;
+        const numberRegex = /[0-9]/;
+        const specialCharRegex = /[!@#$%^&*(),.?":{}|<>]/;
+
+        if (password.length < minLength) {
+          return {
+            isValid: false,
+            message: `Le mot de passe doit contenir au moins ${minLength} caract√®res.`,
+          };
+        }
+        if (!upperCaseRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins une lettre majuscule.",
+          };
+        }
+        if (!lowerCaseRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins une lettre minuscule.",
+          };
+        }
+        if (!numberRegex.test(password)) {
+          return {
+            isValid: false,
+            message: "Le mot de passe doit contenir au moins un chiffre.",
+          };
+        }
+        if (!specialCharRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins un caract√®re sp√©cial.",
+          };
+        }
+        return { isValid: true, message: "" };
+      }
+
+      // V√©rifier si l'utilisateur est d√©j√† authentifi√©
+      window.addEventListener("load", async function () {
+        try {
+          const csrfToken = await getCsrfToken(); // R√©cup√©rer le token CSRF
+          fetch("/auth/verify-token", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "CSRF-Token": csrfToken, // Inclure le token CSRF
+            },
+            credentials: "include", // Inclure les cookies
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Utilisateur non authentifi√©.");
+              }
+              return response.json();
+            })
+            .then((data) => {
+              if (data.valid) {
+                window.location.href = "/camera";
+              }
+            })
+            .catch((err) => {
+              console.error("Erreur lors de la v√©rification du token", err);
+            });
+        } catch (error) {
+          console.error(
+            "Erreur dans l'√©v√©nement de chargement de la fen√™tre:",
+            error
+          );
+        }
+      });
+
+      document
+        .getElementById("registerForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const email = document.getElementById("registerEmail").value;
+          const username = document.getElementById("registerUsername").value;
+          const password = document.getElementById("registerPassword").value;
+          const csrfToken = await getCsrfToken(); // R√©cup√©rer le token CSRF
+
+          // Validation du mot de passe
+          const passwordValidation = validatePassword(password);
+          if (!passwordValidation.isValid) {
+            alert(passwordValidation.message);
+            return;
+          }
+
+          fetch("/auth/register", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "CSRF-Token": csrfToken, // Inclure le token CSRF
+            },
+            body: JSON.stringify({ email, username, password }),
+            credentials: "include", // Inclure les cookies
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Erreur lors de l'inscription");
+              }
+              return response.json();
+            })
+            .then((data) => {
+              alert(
+                "Inscription r√©ussie! Veuillez v√©rifier votre email pour confirmer votre compte."
+              );
+            })
+            .catch((error) => {
+              console.error("Erreur lors de l'inscription:", error);
+              alert("Erreur lors de l'inscription. Veuillez r√©essayer.");
+            });
+        });
+
+      // Connexion
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const email = document.getElementById("loginEmail").value;
+          const password = document.getElementById("loginPassword").value;
+
+          const csrfToken = await getCsrfToken(); // R√©cup√©rer le token CSRF
+
+          fetch("/auth/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "CSRF-Token": csrfToken, // Inclure le token CSRF
+            },
+            body: JSON.stringify({ email, password }),
+            credentials: "include", // Inclure les cookies
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Erreur lors de la connexion");
+              }
+              return response.json();
+            })
+            .then((data) => {
+              window.location.href = "/camera"; // Rediriger vers la page cam√©ra
+            })
+            .catch((error) => {
+              console.error("Erreur lors de la connexion:", error);
+              alert(
+                "Erreur lors de la connexion. Veuillez v√©rifier vos identifiants."
+              );
+            });
+        });
+    </script>
+  </body>
+</html>
+-e 
+
+==== ./src/public/favicon_cam.ico ====
+          º  F         r            ±  t  00        %  âPNG
+
+   IHDR         Ûˇa  ÉIDATxú≈ìøkSQ«?Áˆæ$jH#guïöÆ∂•Íê1§–ùú
+.nZ:ı_°“°•ì—AÇ‘≈©Ö8&Flª4íÖ÷º◊{^!yîà∂Bœvﬂ{ŒÁ~œπp—!—£
+˙7∑d∏ #g&x¶WxçGXÄL“¿∑4Z'ö#îe:RÑ^|¥,ﬁbKΩïŸÒÚÏÓœk¡Á⁄¥uæg bQ5é6	2<ó6™bÓ k•6ÚsÈOﬂ'ô˘∫…´GÜW·IÍ{`í‡zX˚‰†¬= :ΩT0ˇÆ§;˚c¡ÍcÏÿe«fÕ° Ÿ7h£É¡wØ6ÉÙ\\ﬁnÂdªyG
+∑ë‹∫ëó´»Åè‰o!Ó1QﬂlƒDEcI_èª¢≈™’“C¯ÚíºØ¢&«.:ËÎã'øåıëFô∫âd◊êzCq‡'0t4†Ö!@±O7 %úBu¥π‘ß8Ω…∞√(0q=LˇiŒˇ˛˛[wÄﬂcãä à,Ã"    IENDÆB`ÇâPNG
+
+   IHDR         ‡w=¯  9IDATxúÌ”1àTW∆Òﬂ}oﬁŒ: Z•4\∞i,$ääJBöÄ"$6Z)R»b%â»Vv"Æ]@]tM°8êÄE∞P,É¢êêuì∏ª„8soä7F›ùµ∞øÊ¡ΩÁœ9ﬂ„ΩﬁyÖûß{SÒ∆ï>¡C|5 ïÓe±üÈ5¥p,UM€Ôë™àÍ%•V)-ÌHÎejTìôw≈XhKŸ≥N*œ=)íÜ´À”°ovû¥$üuÂﬁç;kds≥]kAV#∆⁄\ä9?†·°¸Y„/ Jo∫/-˘˚Ø√kø^Üt¥≥?4Æ˛hh§Â€uCÍC\∫À•õTÍ¥;»<xºp ïÖ–âyÒ˚Ãh1R˝3=¸ÁÉ ìªÇM´ ˚Ô◊≥cÇÛ7»kt]@6ê‡#∑ñ˙¯¯oÚ‘—n;ªèM´
+[O—∏ÕôØ8∑ãÕ'π|õºZN©óKPÊﬂf›ÃÏrÌJ’g´9pôüØ— Ÿz¢Ùm%µ»˙f± ≤,…Ú(ã<çlXYŒ<Œ∞e¥,˙«Ï†
+•zÓ ¢ œÇfìœOsa7˜À]∆>eÍ„øñij¯Q˙R'IŸS◊Ÿ6¡O_≤ÒC&oÒ≈D9˜êìÇ$ï+|]@!"≤eL›b≈ë2 Û-‰›‚	Q!º*E†&ô˜H‘•ˇ!öÕno9!êûGß-™ÊñÎ±ˇ|ßÆ∂¯nE˜;›ÎQsÇiOåá'=gÚ∂‘'¡i@≤˚(!Ñûã~ØÅ˙îﬂπ$á4íƒ    IENDÆB`ÇâPNG
+
+   IHDR           szzÙ  xIDATxúÌñΩkA∆≥wﬁÂåÿiå¨¢]êKe~L„G–"¢çµe4R¯(¢ççê±11E¿"Çïä‡!HêXπ€›y-Ê‚û·6ª''iÓÅeaÊùyüy?ûh°Ö∂jÛiIòo»ï4oØ&"˛ÑìbÛìÏËÓ;–aÜ¶óX*u¸õß1Â•#0*c*`ƒ?EªÛà¯. Y Ñ†,∞≠hY†Î∫,aü!!™6N+¡q≤Ú.ú”é+ñB∏=ïwüzprx—Ï<Ñı≤l!v]zq –àrˆ‡ì Lû-≤ˆñ}∂Á\˙ªAk`j¨¸Ö†Q(bJ0û¿˙—á≤@|»Á≥Á°∏72ôÉ[/!SÄ ∫3T¥æaÅÜ…ß±î∆∂ÑØ+]¥g`fXQÏÑ≈|.¡—p≥≤
+ÆœÄ]àIGZ`C9Ñ3O£¡,ºΩΩù6s_`pVW†x^¡µ#‡iç©ì$¨$∑P!Sq⁄|
+möﬁ=ÀáÅ«∞ÍC~,|ÑÀS†äÄïR¬íj _gLWhêˇ†eâ¯c®¿Ø¿¸7»π0=;\æC±Óû46%≥kZ≤âÄj1[¶˜O‹ÉÈaËÎÇŸKQÓÃ¡ç70˛ aö¸ß& &ø Åµ é›áπã¶Wïπn6ÅÄ†ƒ4Üÿ.îÀp¸!ÙÔﬂ Dmú+j°AÇ¬BNıò˛V€`≠œﬂì$≈™*≈±~6ã@@àá‘\FÎ‹B„◊Œ◊á1«0ZË≈≈ Ò:¶¥	≈Fso9ZO≤Z¯∂9⁄`j˛5    IENDÆB`ÇâPNG
+
+   IHDR   0   0   W˘á   ÃIDATxúÌô—É EÈ≤ˇ&|y}ZbR7/ﬁ4ﬁÛ&íÿCi≈hÓ^2Ûbp	∞ë 	∞ë 	∞ë õÙÔ≥≠ï€œ›^ãEsûìÅ^˚E±∆˚(z^Œ‚µ≥ÜŒíåÇüç_.âñ¯yÕ
+ˆ;∏˝ñŸﬂÛä€N∞ÃÇ]£2±§éV7MﬂâF§l£QëFE˛/–7±µæ]ÕCﬂBQpËNîæç.;Ã≠vÑ⁄(õÙ¶dd$¿Fl$¿Fl$¿fºµ-Êëá«    IENDÆB`Ç-e 
+
+==== ./src/public/camera.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="icon" type="image/x-icon" href="/favicon_cam.ico" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camagru - Dashboard & Capture</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="flex flex-col min-h-screen bg-gray-100">
+    <!-- Header -->
+    <header
+      class="bg-gray-900 text-white p-4 flex justify-between items-center"
+    >
+      <div class="flex space-x-6">
+        <a href="/gallery" class="hover:text-gray-300 transition">Gallery</a>
+        <a href="/camera" class="text-gray-300 font-semibold">Dashboard</a>
+        <a href="/settings" class="hover:text-gray-300 transition">Settings</a>
+      </div>
+      <button
+        class="logout-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+      >
+        D√©connexion
+      </button>
+    </header>
+
+    <!-- Main content and sidebar -->
+    <div class="flex flex-1 flex-col md:flex-row overflow-hidden">
+      <!-- Main -->
+      <main class="flex-1 p-6 overflow-auto">
+        <h2 class="text-3xl font-bold mb-6 text-gray-800">
+          Capture de Photo avec la Webcam
+        </h2>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Vid√©o -->
+          <div class="flex flex-col items-center space-y-4">
+            <video id="video" class="w-full rounded shadow-lg" autoplay></video>
+            <button
+              id="capture"
+              class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors"
+            >
+              Capturer la photo
+            </button>
+          </div>
+
+          <!-- Contr√¥les -->
+          <div class="space-y-4">
+            <h3 class="text-xl font-semibold mb-2 text-gray-800">
+              Choisir un calque :
+            </h3>
+            <select
+              id="frame-select"
+              class="border border-gray-300 rounded px-4 py-2 w-full"
+            >
+              <option value="">Aucun calque</option>
+            </select>
+
+            <h3 class="text-xl font-semibold mt-4 mb-2 text-gray-800">
+              Ou importer une image depuis votre PC :
+            </h3>
+            <input
+              type="file"
+              id="image-upload"
+              accept="image/png, image/jpeg"
+              class="w-full"
+            />
+
+            <h3 class="text-xl font-semibold mt-4 mb-2 text-gray-800">
+              Contr√¥les du filtre :
+            </h3>
+            <div class="space-y-4">
+              <div class="flex items-center">
+                <label class="w-32 text-gray-700">Position X :</label>
+                <input
+                  type="range"
+                  id="posX"
+                  min="0"
+                  max="640"
+                  value="0"
+                  class="flex-1"
+                />
+              </div>
+              <div class="flex items-center">
+                <label class="w-32 text-gray-700">Position Y :</label>
+                <input
+                  type="range"
+                  id="posY"
+                  min="0"
+                  max="480"
+                  value="0"
+                  class="flex-1"
+                />
+              </div>
+              <div class="flex items-center">
+                <label class="w-32 text-gray-700">Taille :</label>
+                <input
+                  type="range"
+                  id="size"
+                  min="100"
+                  max="640"
+                  value="640"
+                  class="flex-1"
+                />
+              </div>
+            </div>
+            <button
+              id="save"
+              class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled
+            >
+              Sauvegarder la photo
+            </button>
+          </div>
+
+          <!-- Canvas -->
+          <div class="flex flex-col items-center space-y-4">
+            <canvas id="canvas" class="w-full rounded shadow-lg"></canvas>
+          </div>
+        </div>
+      </main>
+
+      <!-- Sidebar -->
+      <aside
+        class="w-full md:w-80 bg-white p-6 border-t md:border-t-0 md:border-l border-gray-200 overflow-y-auto"
+      >
+        <h2 class="text-2xl font-bold mb-6 text-gray-800">
+          Images enregistr√©es
+        </h2>
+        <div id="image-list" class="space-y-6">
+          <!-- Exemple d'image avec boutons en colonne -->
+          <div class="flex items-start space-x-4">
+            <div class="flex flex-col space-y-2">
+              <button
+                class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs rounded w-20"
+              >
+                Modifier
+              </button>
+              <button
+                class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 text-xs rounded w-20"
+              >
+                Exporter
+              </button>
+              <button
+                class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 text-xs rounded w-20"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+          <!-- Ajoute ici d'autres images si n√©cessaire -->
+        </div>
+      </aside>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white text-center p-4 mt-auto">
+      <p>Camagru ¬© 2024</p>
+    </footer>
+
+    <!-- JavaScript code -->
+    <script>
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+      const context = canvas.getContext("2d");
+      const captureButton = document.getElementById("capture");
+      const saveButton = document.getElementById("save");
+      const frameSelect = document.getElementById("frame-select");
+      const posXSlider = document.getElementById("posX");
+      const posYSlider = document.getElementById("posY");
+      const sizeSlider = document.getElementById("size");
+      const imageList = document.getElementById("image-list");
+      const imageUpload = document.getElementById("image-upload");
+      const sidebar = document.getElementById("sidebar");
+
+      let capturedImage = null;
+      let uploadedImage = null;
+
+      function getCsrfToken() {
+        return fetch("/auth/csrf-token", {
+          credentials: "include", // Inclure les cookies dans la requ√™te
+        })
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("√âchec de l'obtention du token CSRF");
+            }
+            return res.json();
+          })
+          .then((data) => data.csrfToken)
+          .catch((error) => {
+            console.error(
+              "Erreur lors de la r√©cup√©ration du token CSRF:",
+              error
+            );
+            alert(
+              "Erreur lors de la r√©cup√©ration du token CSRF. Veuillez r√©essayer plus tard."
+            );
+            throw error; // Propager l'erreur pour qu'elle puisse √™tre g√©r√©e ailleurs si n√©cessaire
+          });
+      }
+      // Fonction pour √©chapper les caract√®res sp√©ciaux
+      function escapeHTML(str) {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      // Charger dynamiquement les frames depuis le serveur
+      window.addEventListener("load", function () {
+        fetch("/auth/frames", {
+          credentials: "include",
+        })
+          .then((response) => response.json())
+          .then((frames) => {
+            frames.forEach((frame) => {
+              const option = document.createElement("option");
+              option.value = frame;
+              option.textContent = frame.replace(".png", ""); // Afficher sans l'extension
+              frameSelect.appendChild(option);
+            });
+          })
+          .catch((err) =>
+            console.error("Erreur lors du chargement des frames :", err)
+          );
+      });
+
+      // Acc√©der √† la webcam
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((stream) => {
+          video.srcObject = stream;
+        })
+        .catch((err) => {
+          console.error("Erreur lors de l'acc√®s √† la webcam:", err);
+        });
+
+      // Capturer l'image via la webcam
+      captureButton.addEventListener("click", () => {
+        // D√©finir les dimensions du canvas en fonction de la vid√©o
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        capturedImage = context.getImageData(0, 0, canvas.width, canvas.height);
+        uploadedImage = null; // Annuler l'image upload√©e si une photo est prise
+        saveButton.disabled = false; // Activer le bouton de sauvegarde
+        applyFilter();
+      });
+
+      // Appliquer un filtre dynamique sur l'image captur√©e
+      frameSelect.addEventListener("change", applyFilter);
+      posXSlider.addEventListener("input", applyFilter);
+      posYSlider.addEventListener("input", applyFilter);
+      sizeSlider.addEventListener("input", applyFilter);
+
+      function applyFilter() {
+        // Si une image upload√©e existe, elle a la priorit√©
+        if (uploadedImage) {
+          context.clearRect(0, 0, canvas.width, canvas.height); // Effacer le canvas
+          context.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+        } else if (capturedImage) {
+          context.putImageData(capturedImage, 0, 0);
+        } else {
+          return; // Si aucune image, ne rien faire
+        }
+
+        const selectedFrame = frameSelect.value;
+        if (selectedFrame) {
+          const frameImage = new Image();
+          frameImage.src = `/frames/${selectedFrame}`;
+          frameImage.onload = () => {
+            const posX = parseInt(posXSlider.value);
+            const posY = parseInt(posYSlider.value);
+            const size = parseInt(sizeSlider.value);
+            context.drawImage(frameImage, posX, posY, size, size);
+          };
+        }
+      }
+
+      // G√©rer le chargement d'une image depuis le PC
+      imageUpload.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function (event) {
+          uploadedImage = new Image();
+          uploadedImage.src = event.target.result;
+
+          uploadedImage.onload = function () {
+            // D√©finir les dimensions du canvas en fonction de l'image upload√©e
+            canvas.width = uploadedImage.width;
+            canvas.height = uploadedImage.height;
+
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+            capturedImage = null; // D√©sactiver l'image captur√©e par la webcam si une image est upload√©e
+            saveButton.disabled = false; // Activer le bouton de sauvegarde
+            applyFilter();
+          };
+        };
+
+        if (file) {
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Sauvegarder l'image
+      saveButton.addEventListener("click", async () => {
+        // V√©rifier qu'une image existe (soit captur√©e par webcam, soit upload√©e)
+        if (!capturedImage && !uploadedImage) return;
+
+        const imageData = canvas.toDataURL("image/png");
+
+        const csrfToken = await getCsrfToken(); // R√©cup√©rer le token CSRF
+
+        fetch("/auth/upload", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "CSRF-Token": csrfToken, // Inclure le token CSRF
+          },
+          credentials: "include", // Inclure les cookies
+          body: JSON.stringify({ image: imageData }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Image sauvegard√©e avec succ√®s :", data);
+            loadUserImages();
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la sauvegarde de l'image :", error);
+          });
+      });
+
+      // Charger les images de l'utilisateur
+      function loadUserImages() {
+        fetch("/auth/user-images", {
+          method: "GET",
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            imageList.innerHTML = "";
+            data.forEach((image) => {
+              const imgContainer = document.createElement("div");
+              imgContainer.classList.add("flex", "items-start", "space-x-4");
+
+              const img = document.createElement("img");
+              img.src = escapeHTML(image.image_path);
+              img.classList.add("w-24", "h-24", "object-cover", "rounded"); // Ajustement ici : agrandissement de l'image
+
+              const btnGroup = document.createElement("div");
+              btnGroup.classList.add("flex", "flex-col", "space-y-2");
+
+              const deleteButton = document.createElement("button");
+              deleteButton.classList.add(
+                "bg-red-500",
+                "hover:bg-red-600",
+                "text-white",
+                "px-2",
+                "py-1",
+                "rounded",
+                "text-sm",
+                "transition-colors",
+                "duration-200",
+                "w-20"
+              );
+              deleteButton.textContent = "Supprimer";
+
+              const exportButton = document.createElement("button");
+              exportButton.classList.add(
+                "bg-blue-500",
+                "hover:bg-blue-600",
+                "text-white",
+                "px-2",
+                "py-1",
+                "rounded",
+                "text-sm",
+                "transition-colors",
+                "duration-200",
+                "w-20"
+              );
+              exportButton.textContent = "Exporter";
+
+              const editButton = document.createElement("button");
+              editButton.classList.add(
+                "bg-green-500",
+                "hover:bg-green-600",
+                "text-white",
+                "px-2",
+                "py-1",
+                "rounded",
+                "text-sm",
+                "transition-colors",
+                "duration-200",
+                "w-20"
+              );
+              editButton.textContent = "Modifier";
+
+              deleteButton.addEventListener("click", () => {
+                deleteImage(image.id);
+              });
+
+              exportButton.addEventListener("click", () => {
+                exportImage(image.image_path);
+              });
+
+              editButton.addEventListener("click", () => {
+                editImage(image.image_path);
+              });
+
+              btnGroup.appendChild(editButton);
+              btnGroup.appendChild(exportButton);
+              btnGroup.appendChild(deleteButton);
+
+              imgContainer.appendChild(img);
+              imgContainer.appendChild(btnGroup);
+              imageList.appendChild(imgContainer);
+            });
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la r√©cup√©ration des images :", error);
+          });
+      }
+
+      // Charger les images de l'utilisateur au chargement de la page
+      window.addEventListener("load", loadUserImages);
+
+      // Exporter l'image en PNG
+      function exportImage(imagePath) {
+        const a = document.createElement("a");
+        a.href = escapeHTML(imagePath);
+        a.download = "image.png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+
+      // Modifier une image (charger dans le canvas)
+      function editImage(imagePath) {
+        const img = new Image();
+        img.src = escapeHTML(imagePath);
+        img.onload = () => {
+          // D√©finir les dimensions du canvas en fonction de l'image √† √©diter
+          canvas.width = img.width;
+          canvas.height = img.height;
+
+          context.clearRect(0, 0, canvas.width, canvas.height); // Effacer le canvas actuel
+          context.drawImage(img, 0, 0, canvas.width, canvas.height); // Dessiner l'image sur le canvas
+          capturedImage = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          ); // Stocker l'image
+          saveButton.disabled = false; // Activer le bouton de sauvegarde
+        };
+      }
+
+      // Supprimer une image
+      async function deleteImage(imageId) {
+        const csrfToken = await getCsrfToken(); // R√©cup√©rer le token CSRF
+
+        fetch(`/auth/delete-image/${imageId}`, {
+          method: "DELETE",
+          headers: {
+            "CSRF-Token": csrfToken, // Inclure le token CSRF
+          },
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Image supprim√©e avec succ√®s :", data);
+            loadUserImages(); // Recharger la liste des images apr√®s suppression
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la suppression de l'image :", error);
+          });
+      }
+
+      // V√©rification du token au chargement
+      window.addEventListener("load", async function () {
+        const csrfToken = await getCsrfToken(); // R√©cup√©rer le token CSRF
+
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "CSRF-Token": csrfToken, // Inclure le token CSRF
+          },
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (!response.ok) {
+              window.location.href = "/"; // Rediriger vers la page de connexion si non authentifi√©
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la v√©rification du token :", err);
+            window.location.href = "/"; // Rediriger en cas d'erreur
+          });
+
+        loadUserImages(); // Charger les images de l'utilisateur apr√®s la v√©rification
+      });
+
+      window.onload = loadUserImages;
+    </script>
+    <script src="logout.js"></script>
+  </body>
+</html>
+-e 
+
+==== ./src/public/gallery.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="icon" type="image/x-icon" href="/favicon_cam.ico" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Galerie d'images</title>
+    <style>
+      body {
+        display: grid;
+        grid-template-areas:
+          "header"
+          "main"
+          "footer";
+        grid-template-rows: auto 1fr auto;
+        height: 100vh;
+        margin: 0;
+      }
+
+      header {
+        grid-area: header;
+        background-color: #333;
+        color: white;
+        padding: 1rem;
+        text-align: center;
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 20px;
+      }
+
+      .nav-links a {
+        color: white;
+        text-decoration: none;
+        font-size: 1.2rem;
+        padding: 10px 15px;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+      }
+
+      .nav-links a.active {
+        background-color: #555;
+        border-radius: 5px;
+      }
+
+      footer {
+        grid-area: footer;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        padding: 1rem;
+      }
+
+      main {
+        grid-area: main;
+        padding: 1rem;
+        background-color: #f4f4f4;
+        overflow-y: auto;
+      }
+
+      .logout-btn {
+        background-color: red;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+
+      img {
+        max-width: 100%;
+        height: auto;
+        margin-bottom: 10px;
+        display: block;
+      }
+
+      .image-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 10px;
+      }
+
+      .username {
+        font-weight: bold;
+        margin-left: 20px;
+      }
+
+      button {
+        margin-top: 10px;
+      }
+
+      .pagination {
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      .pagination button {
+        padding: 10px 15px;
+        margin: 0 5px;
+        background-color: #333;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      /* Responsive Design */
+      @media screen and (max-width: 768px) {
+        body {
+          grid-template-areas:
+            "header"
+            "main"
+            "footer";
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr auto;
+        }
+
+        header {
+          flex-direction: column;
+        }
+
+        .nav-links {
+          flex-direction: column;
+          align-items: center;
+          gap: 10px; /* R√©duire l'espace entre les liens */
+        }
+
+        .nav-links a {
+          padding: 10px;
+          width: 100%;
+          text-align: center;
+        }
+
+        main {
+          padding: 0.5rem;
+        }
+
+        .image-container {
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+        }
+
+        img {
+          width: 100%; /* L'image prend toute la largeur sur mobile */
+          max-width: 100%;
+          height: auto;
+        }
+
+        .pagination {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .pagination button {
+          width: 100%;
+          margin-bottom: 10px; /* Ajouter un espace entre les boutons de pagination */
+        }
+
+        .logout-btn {
+          width: 100%;
+          margin-top: 10px;
+          padding: 10px 0; /* Ajuster la hauteur du bouton */
+          text-align: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="nav-links">
+        <a href="/gallery" id="gallery-link" class="active">Gallery</a>
+        <a href="/camera" id="dashboard-link">Dashboard</a>
+        <a href="/settings" id="settings-link">Settings</a>
+      </div>
+      <button class="logout-btn">D√©connexion</button>
+    </header>
+
+    <main>
+      <div id="gallery"></div>
+      <div class="pagination">
+        <button id="prev-page" disabled>Pr√©c√©dent</button>
+        <button id="next-page">Suivant</button>
+      </div>
+    </main>
+
+    <footer>
+      <p>Camagru ¬© 2024</p>
+    </footer>
+
+    <script>
+      // Fonction pour obtenir le token CSRF
+      function getCsrfToken() {
+        return fetch("/auth/csrf-token", {
+          credentials: "include", // Inclure les cookies dans la requ√™te
+        })
+          .then((res) => res.json())
+          .then((data) => data.csrfToken);
+      }
+
+      // Fonction pour √©chapper les caract√®res sp√©ciaux
+      function escapeHTML(str) {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      // Marquer le lien actif
+      const currentUrl = window.location.pathname;
+      if (currentUrl === "/gallery") {
+        document.getElementById("gallery-link").classList.add("active");
+      } else if (currentUrl === "/camera") {
+        document.getElementById("dashboard-link").classList.add("active");
+      } else if (currentUrl === "/settings") {
+        document.getElementById("settings-link").classList.add("active");
+      }
+
+      let currentPage = 1;
+      const imagesPerPage = 5; // Limite d'images par page
+
+      // V√©rification du token au chargement
+      window.addEventListener("load", async function () {
+        const csrfToken = await getCsrfToken(); // R√©cup√©rer le token CSRF
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "CSRF-Token": csrfToken, // Inclure le token CSRF
+          },
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (!response.ok) {
+              window.location.href = "/";
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la v√©rification du token :", err);
+            window.location.href = "/";
+          });
+
+        loadImages(currentPage); // Charger les images au chargement de la page
+      });
+
+      // Fonction de d√©connexion
+      document
+        .querySelector(".logout-btn")
+        .addEventListener("click", async () => {
+          const csrfToken = await getCsrfToken(); // R√©cup√©rer le token CSRF
+          fetch("/auth/logout", {
+            method: "POST",
+            headers: {
+              "CSRF-Token": csrfToken, // Inclure le token CSRF
+            },
+            credentials: "include", // Inclure les cookies
+          })
+            .then((response) => {
+              if (response.ok) {
+                window.location.href = "/"; // Rediriger vers la page d'accueil
+              } else {
+                throw new Error("Erreur lors de la d√©connexion");
+              }
+            })
+            .catch((error) => {
+              console.error("Erreur lors de la d√©connexion :", error);
+            });
+        });
+
+      // R√©cup√©rer les images et afficher la galerie avec pagination
+      function loadImages(page) {
+        fetch(`/auth/images?page=${page}&limit=${imagesPerPage}`, {
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            const galleryDiv = document.getElementById("gallery");
+            galleryDiv.innerHTML = ""; // Vider la galerie avant de recharger
+
+            if (data.images.length === 0) {
+              galleryDiv.innerHTML = "<p>Aucune image √† afficher.</p>";
+            } else {
+              data.images.forEach((image) => {
+                const imgContainer = document.createElement("div");
+                imgContainer.classList.add("image-container");
+
+                const img = document.createElement("img");
+                img.src = image.image_path;
+                img.width = 200;
+
+                // V√©rifie ici que l'email est bien r√©cup√©r√© et affich√©
+                const email = document.createElement("div");
+                email.classList.add("username");
+                email.textContent = `Par : ${
+                  image.email ? escapeHTML(image.email) : "Inconnu"
+                }`;
+
+                const likeButton = document.createElement("button");
+                const commentForm = document.createElement("form");
+                const commentInput = document.createElement("input");
+                const commentButton = document.createElement("button");
+                const commentSection = document.createElement("div");
+
+                // Charger l'√©tat du like (v√©rifier si l'utilisateur a lik√© l'image)
+                fetch(`/auth/like-status/${image.id}`, {
+                  credentials: "include", // Inclure les cookies
+                })
+                  .then((response) => response.json())
+                  .then((likeData) => {
+                    likeButton.textContent = likeData.liked
+                      ? `Unlike (${escapeHTML(String(likeData.likes))})`
+                      : `Like (${escapeHTML(String(likeData.likes))})`;
+                  });
+
+                // Gestion des likes (ajouter ou retirer un like)
+                likeButton.addEventListener("click", async () => {
+                  const csrfToken = await getCsrfToken(); // R√©cup√©rer le token CSRF
+                  fetch(`/auth/like/${image.id}`, {
+                    method: "POST",
+                    headers: {
+                      "CSRF-Token": csrfToken, // Inclure le token CSRF
+                    },
+                    credentials: "include", // Inclure les cookies
+                  })
+                    .then((response) => response.json())
+                    .then((data) => {
+                      // Mettre √† jour le bouton apr√®s un like/unlike
+                      fetch(`/auth/like-status/${image.id}`, {
+                        credentials: "include", // Inclure les cookies
+                      })
+                        .then((response) => response.json())
+                        .then((likeData) => {
+                          likeButton.textContent = likeData.liked
+                            ? `Unlike (${likeData.likes})`
+                            : `Like (${likeData.likes})`;
+                        });
+                    })
+                    .catch((error) => {
+                      console.error(
+                        "Erreur lors de la gestion du like :",
+                        error
+                      );
+                    });
+                });
+
+                // Formulaire pour ajouter un commentaire
+                commentInput.placeholder = "Ajouter un commentaire...";
+                commentButton.textContent = "Envoyer";
+                commentButton.type = "submit";
+                commentForm.appendChild(commentInput);
+                commentForm.appendChild(commentButton);
+
+                // Gestion des commentaires : soumettre un commentaire
+                commentForm.addEventListener("submit", async (e) => {
+                  e.preventDefault();
+                  const comment = commentInput.value;
+                  if (comment) {
+                    const csrfToken = await getCsrfToken(); // R√©cup√©rer le token CSRF
+                    fetch(`/auth/comment/${image.id}`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "CSRF-Token": csrfToken, // Inclure le token CSRF
+                      },
+                      credentials: "include", // Inclure les cookies
+                      body: JSON.stringify({ comment }),
+                    })
+                      .then((response) => response.json())
+                      .then((data) => {
+                        commentInput.value = ""; // R√©initialiser le champ de commentaire
+                        loadComments(image.id, commentSection); // Recharger les commentaires apr√®s ajout
+                      })
+                      .catch((error) => {
+                        console.error(
+                          "Erreur lors de l'ajout du commentaire :",
+                          error
+                        );
+                      });
+                  }
+                });
+
+                imgContainer.appendChild(img);
+                imgContainer.appendChild(email);
+                galleryDiv.appendChild(imgContainer);
+                imgContainer.appendChild(likeButton);
+                imgContainer.appendChild(commentForm);
+                imgContainer.appendChild(commentSection);
+
+                // Charger les commentaires pour cette image
+                loadComments(image.id, commentSection);
+              });
+
+              // Mettre √† jour l'√©tat des boutons de pagination
+              const prevButton = document.getElementById("prev-page");
+              const nextButton = document.getElementById("next-page");
+
+              prevButton.disabled = page === 1;
+              nextButton.disabled = !data.hasMore;
+            }
+          })
+          .catch((error) => {
+            console.error("Erreur lors de la r√©cup√©ration des images :", error);
+          });
+      }
+
+      function loadComments(imageId, commentSection) {
+        commentSection.innerHTML = ""; // Effacer les anciens commentaires
+        fetch(`/auth/comments/${imageId}`, {
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => response.json())
+          .then((comments) => {
+            comments.forEach((comment) => {
+              const commentDiv = document.createElement("div");
+              commentDiv.textContent = `${escapeHTML(
+                comment.email
+              )} : ${escapeHTML(comment.comment)}`;
+              commentSection.appendChild(commentDiv); // Ajouter cette ligne
+            });
+          })
+          .catch((error) => {
+            console.error(
+              "Erreur lors de la r√©cup√©ration des commentaires :",
+              error
+            );
+          });
+      }
+
+      // Gestion de la pagination
+      document.getElementById("prev-page").addEventListener("click", () => {
+        if (currentPage > 1) {
+          currentPage--;
+          loadImages(currentPage);
+        }
+      });
+
+      document.getElementById("next-page").addEventListener("click", () => {
+        currentPage++;
+        loadImages(currentPage);
+      });
+    </script>
+    <script src="logout.js"></script>
+  </body>
+</html>
+-e 
+
+==== ./src/public/reset-password.html ====
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link
+      rel="icon"
+      type="image/x-icon"
+      href="/src/public/favicon_cam.ico?v=1"
+    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>R√©initialiser le mot de passe</title>
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f4f4f4;
+      }
+      .container {
+        width: 100%;
+        max-width: 400px;
+        padding: 20px;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+      }
+      h2 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      label {
+        font-weight: bold;
+        display: block;
+        margin-bottom: 5px;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        background-color: #333;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+        font-size: 1rem;
+      }
+      button:hover {
+        background-color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>R√©initialiser le mot de passe</h2>
+      <form id="resetPasswordForm">
+        <input type="hidden" id="token" />
+        <label for="newPassword">Nouveau mot de passe :</label>
+        <input type="password" id="newPassword" required />
+        <label for="confirmPassword">Confirmer le mot de passe :</label>
+        <input type="password" id="confirmPassword" required />
+        <button type="submit">R√©initialiser le mot de passe</button>
+      </form>
+    </div>
+
+    <script>
+      // Fonction pour r√©cup√©rer le token CSRF
+      async function getCsrfToken() {
+        try {
+          const response = await fetch("/auth/csrf-token", {
+            credentials: "include",
+          });
+          if (!response.ok)
+            throw new Error("√âchec de l'obtention du token CSRF");
+          const data = await response.json();
+          return data.csrfToken;
+        } catch (error) {
+          console.error("Erreur lors de la r√©cup√©ration du token CSRF:", error);
+          alert(
+            "Erreur lors de la r√©cup√©ration du token CSRF. Veuillez r√©essayer plus tard."
+          );
+          throw error;
+        }
+      }
+
+      // Fonction de validation de mot de passe
+      function validatePassword(password) {
+        const minLength = 12;
+        const upperCaseRegex = /[A-Z]/;
+        const lowerCaseRegex = /[a-z]/;
+        const numberRegex = /[0-9]/;
+        const specialCharRegex = /[!@#$%^&*(),.?":{}|<>]/;
+
+        if (password.length < minLength) {
+          return {
+            isValid: false,
+            message: `Le mot de passe doit contenir au moins ${minLength} caract√®res.`,
+          };
+        }
+        if (!upperCaseRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins une lettre majuscule.",
+          };
+        }
+        if (!lowerCaseRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins une lettre minuscule.",
+          };
+        }
+        if (!numberRegex.test(password)) {
+          return {
+            isValid: false,
+            message: "Le mot de passe doit contenir au moins un chiffre.",
+          };
+        }
+        if (!specialCharRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins un caract√®re sp√©cial.",
+          };
+        }
+
+        return { isValid: true, message: "" };
+      }
+
+      // Extraire le token de l'URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get("token");
+      document.getElementById("token").value = token;
+
+      // Gestion de la soumission du formulaire avec le token CSRF
+      document
+        .getElementById("resetPasswordForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const newPassword = document.getElementById("newPassword").value;
+          const confirmPassword =
+            document.getElementById("confirmPassword").value;
+
+          // Validation de la s√©curit√© du mot de passe
+          const passwordValidation = validatePassword(newPassword);
+          if (!passwordValidation.isValid) {
+            alert(passwordValidation.message);
+            return;
+          }
+
+          if (newPassword !== confirmPassword) {
+            alert("Les mots de passe ne correspondent pas.");
+            return;
+          }
+
+          try {
+            const csrfToken = await getCsrfToken(); // R√©cup√©rer le token CSRF
+            const response = await fetch("/auth/reset-password", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "CSRF-Token": csrfToken, // Inclure le token CSRF
+              },
+              credentials: "include",
+              body: JSON.stringify({ token, newPassword }),
+            });
+
+            const data = await response.json();
+            alert(data.message);
+            if (data.success) {
+              window.location.href = "/"; // Redirige vers la page de connexion
+            }
+          } catch (error) {
+            console.error("Erreur:", error);
+          }
+        });
+    </script>
+  </body>
+</html>
+-e 
+
+==== ./src/public/logout.js ====
+document.addEventListener("DOMContentLoaded", () => {
+  const logoutButton = document.querySelector(".logout-btn");
+
+  // Fonction pour r√©cup√©rer le token CSRF
+  async function getCsrfToken() {
+    try {
+      const response = await fetch("/auth/csrf-token", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("√âchec de l'obtention du token CSRF");
+      const data = await response.json();
+      return data.csrfToken;
+    } catch (error) {
+      console.error("Erreur lors de la r√©cup√©ration du token CSRF:", error);
+      alert(
+        "Erreur lors de la r√©cup√©ration du token CSRF. Veuillez r√©essayer plus tard."
+      );
+      throw error;
+    }
+  }
+
+  if (logoutButton) {
+    logoutButton.addEventListener("click", async () => {
+      try {
+        const csrfToken = await getCsrfToken(); // R√©cup√©rer le token CSRF avant la d√©connexion
+        const response = await fetch("/auth/logout", {
+          method: "POST",
+          headers: {
+            "CSRF-Token": csrfToken, // Inclure le token CSRF dans les en-t√™tes
+          },
+          credentials: "include", // Inclure les cookies
+        });
+
+        if (response.ok) {
+          window.location.href = "/"; // Rediriger vers la page d'accueil
+        } else {
+          throw new Error("Erreur lors de la d√©connexion");
+        }
+      } catch (error) {
+        console.error("Erreur lors de la d√©connexion :", error);
+      }
+    });
+  }
+});
+-e 
+
+==== ./src/routes/authRoutes.js ====
+const express = require("express");
+const router = express.Router();
+const path = require("path");
+const authController = require("../controllers/authController");
+const verifyToken = require("../middleware/authMiddleware");
+const csrf = require("csurf");
+const csrfProtection = csrf({ cookie: true });
+
+// Route pour l'inscription
+router.post("/register", csrfProtection, authController.register);
+
+// Route pour v√©rifier l'email
+router.get("/verify-email", authController.verifyEmail);
+
+// Route pour la connexion
+router.post("/login", csrfProtection, authController.login);
+
+// Route pour la d√©connexion
+router.post("/logout", csrfProtection, authController.logout);
+
+// Route pour l'upload d'images (s√©curis√©e avec JWT)
+router.post("/upload", csrfProtection, verifyToken, authController.uploadImage);
+
+// Route pour afficher les images
+router.get("/images", authController.getImages);
+
+// Route pour liker une image
+router.post(
+  "/like/:imageId",
+  csrfProtection,
+  verifyToken,
+  authController.likeImage
+);
+
+// Route pour v√©rifier si l'utilisateur a d√©j√† lik√© une image
+router.get("/like-status/:imageId", verifyToken, authController.likeStatus);
+
+// Route pour v√©rifier la validit√© du token
+router.post(
+  "/verify-token",
+  csrfProtection,
+  verifyToken,
+  authController.verifyToken
+);
+
+// Route pour ajouter un commentaire
+router.post(
+  "/comment/:imageId",
+  csrfProtection,
+  verifyToken,
+  authController.addComment
+);
+
+// Route pour r√©cup√©rer les commentaires d'une image
+router.get("/comments/:imageId", authController.getComments);
+
+// Route pour lister les frames
+router.get("/frames", authController.getFrames);
+
+// Route pour r√©cup√©rer les images de l'utilisateur
+router.get("/user-images", verifyToken, authController.getUserImages);
+// Route pour supprimer une image
+router.delete(
+  "/delete-image/:imageId",
+  verifyToken,
+  authController.deleteImage
+);
+
+// Nouvelle route pour la page settings (s√©curis√©e avec le JWT)
+router.get("/settings", verifyToken, (req, res) => {
+  const filePath = path.join(dirname, "../public/settings.html");
+  res.sendFile(filePath);
+});
+
+// Route pour obtenir les informations de l'utilisateur connect√©
+router.get("/user-info", verifyToken, authController.getUserInfo);
+
+// Remplacez ensureAuthenticated par verifyToken pour s√©curiser les routes
+router.post(
+  "/update-profile",
+  csrfProtection,
+  verifyToken,
+  authController.updateProfile
+);
+router.post(
+  "/update-password",
+  csrfProtection,
+  verifyToken,
+  authController.updatePassword
+);
+// Route pour la r√©initialisation de mot de passe (mot de passe oubli√©)
+router.post("/forgot-password", csrfProtection, authController.forgotPassword);
+
+router.get("/reset-password", (req, res) => {
+  const filePath = path.join(__dirname, "../public/reset-password.html");
+  res.sendFile(filePath);
+});
+
+// Route pour obtenir le token CSRF
+router.get("/csrf-token", csrfProtection, authController.getCsrfToken);
+
+// Route pour la r√©initialisation du mot de passe (mot de passe oubli√©)
+router.post("/reset-password", csrfProtection, authController.resetPassword);
+
+// Route pour mettre √† jour la pr√©f√©rence de notification
+// router.post(
+//   "/update-notification-preference",
+//   verifyToken,
+//   authController.updateNotificationPreference
+// );
+
+module.exports = router;
+-e 
+
+==== ./src/app.js ====
+const express = require("express");
+const app = express();
+const port = process.env.PORT || 3000;
+const bodyParser = require("body-parser");
+const path = require("path");
+const cookieParser = require("cookie-parser"); // Importer cookie-parser
+
+// Importer la connexion √† la base de donn√©es
+const db = require("../config/database");
+
+// Importer le middleware JWT pour v√©rifier le token
+const verifyToken = require("./middleware/authMiddleware");
+
+// Middleware pour parser les requ√™tes POST
+app.use(bodyParser.json({ limit: "10mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
+app.use(cookieParser()); // Utiliser cookie-parser
+app.use("/frames", express.static(path.join(__dirname, "frames"))); // Calques (frames)
+app.use(express.static(path.join(__dirname, "public")));
+
+// Prot√©ger l'acc√®s √† la page camera.html (aucun acc√®s direct via /camera.html)
+app.get("/camera", verifyToken, (req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "-1");
+  const filePath = path.join(__dirname, "public/camera.html");
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (!res.headersSent) {
+        return next(err); // Propager l'erreur s'il y a un probl√®me
+      }
+    }
+  });
+});
+
+// Prot√©ger l'acc√®s √† la page gallery.html (aucun acc√®s direct via /gallery.html)
+app.get("/gallery", verifyToken, (req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "-1");
+  const filePath = path.join(__dirname, "public/gallery.html");
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (!res.headersSent) {
+        return next(err);
+      }
+    }
+  });
+});
+
+// Nouvelle route pour Settings
+app.get("/settings", verifyToken, (req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "-1");
+  const filePath = path.join(__dirname, "public/settings.html");
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (!res.headersSent) {
+        return next(err);
+      }
+    }
+  });
+});
+
+// Routes d'authentification
+const authRoutes = require("./routes/authRoutes");
+app.use("/auth", authRoutes);
+
+// Route pour les uploads d'images
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Route par d√©faut pour afficher la page d'authentification (register et login)
+app.get("/", (req, res) => {
+  const filePath = path.join(__dirname, "public/auth.html");
+  res.sendFile(filePath);
+});
+
+// Route de test de la base de donn√©es
+app.get("/test-db", (req, res) => {
+  db.query("SELECT 1 + 1 AS solution", (err, results) => {
+    if (err) {
+      res.status(500).send("Erreur avec la base de donn√©es");
+      return;
+    }
+    res.send(`La solution est : ${results[0].solution}`);
+  });
+});
+
+// G√©rer les erreurs CSRF
+app.use((err, req, res, next) => {
+  if (err.code === "EBADCSRFTOKEN") {
+    // Le token CSRF est invalide ou manquant
+    res.status(403).send("Formulaire invalide ou expir√©.");
+  } else {
+    next(err);
+  }
+});
+
+// Gestion globale des erreurs
+app.use((err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(500).send("Une erreur est survenue !");
+});
+
+// D√©marrer le serveur
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+-e 
+
+==== ./src/controllers/authController.js ====
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const db = require("../../config/database"); // Import de la connexion √† la base de donn√©es
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const sharp = require("sharp");
+const transporter = require("../../config/emailConfig");
+
+// Fonction pour obtenir le token CSRF
+exports.getCsrfToken = (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+};
+
+// Fonction pour v√©rifier le token (utilis√©e par /verify-token)
+exports.verifyToken = (req, res) => {
+  res.status(200).json({ valid: true });
+};
+
+// Fonction de d√©connexion (logout)
+exports.logout = (req, res) => {
+  res.clearCookie("token");
+  res.status(200).json({ message: "D√©connexion r√©ussie" });
+};
+
+// Fonction d'inscription (register)
+// Fonction d'inscription (register)
+exports.register = (req, res) => {
+  const { email, username, password } = req.body; // Inclure username
+
+  // V√©rifie si l'utilisateur existe d√©j√† par email ou par username
+  db.query(
+    "SELECT * FROM users WHERE email = ? OR username = ?",
+    [email, username],
+    (err, result) => {
+      if (err) {
+        return res.status(500).send("Erreur du serveur");
+      }
+      if (result.length > 0) {
+        if (result[0].email === email) {
+          return res.status(400).send("Cet email est d√©j√† utilis√©.");
+        }
+        if (result[0].username === username) {
+          return res.status(400).send("Ce nom d'utilisateur est d√©j√† utilis√©.");
+        }
+      }
+
+      // Hacher le mot de passe et ins√©rer l'utilisateur dans la base de donn√©es
+      bcrypt.hash(password, 10, (err, hash) => {
+        if (err) throw err;
+        db.query(
+          "INSERT INTO users (email, username, password) VALUES (?, ?, ?)",
+          [email, username, hash],
+          (err, result) => {
+            if (err) {
+              return res
+                .status(500)
+                .send("Erreur du serveur lors de l'enregistrement");
+            }
+
+            const userId = result.insertId;
+
+            // G√©n√©rer un jeton de v√©rification JWT
+            const verificationToken = jwt.sign(
+              { id: userId },
+              process.env.JWT_SECRET,
+              { expiresIn: "24h" } // Le jeton expire apr√®s 24 heures
+            );
+
+            // Stocker le jeton de v√©rification dans la base de donn√©es
+            db.query(
+              "UPDATE users SET verificationToken = ? WHERE id = ?",
+              [verificationToken, userId],
+              (err, updateResult) => {
+                if (err) {
+                  return res
+                    .status(500)
+                    .send(
+                      "Erreur du serveur lors de la mise √† jour de l'utilisateur"
+                    );
+                }
+
+                // Construire le lien de v√©rification
+                const verificationLink = `http://localhost:3000/auth/verify-email?token=${verificationToken}`;
+
+                // D√©finir les options de l'email
+                const mailOptions = {
+                  from: '"Camagru Support" illidan888@hotmail.fr', // Remplacez par votre adresse email v√©rifi√©e
+                  to: email,
+                  subject: "V√©rification de votre compte Camagru",
+                  html: `
+					<p>Merci de vous √™tre inscrit sur Camagru !</p>
+					<p>Veuillez cliquer sur le lien suivant pour v√©rifier votre adresse email :</p>
+					<a href="${verificationLink}">V√©rifier mon email</a>
+					<p>Ce lien expirera dans 24 heures.</p>
+				  `,
+                };
+
+                // Envoyer l'email de v√©rification
+                transporter.sendMail(mailOptions, (error, info) => {
+                  if (error) {
+                    console.error(
+                      "Erreur lors de l'envoi de l'email de v√©rification :",
+                      error
+                    );
+                    return res
+                      .status(500)
+                      .send(
+                        "Erreur lors de l'envoi de l'email de v√©rification"
+                      );
+                  }
+                  console.log("Email de v√©rification envoy√© :", info.response);
+
+                  res.status(201).json({
+                    message:
+                      "Inscription r√©ussie. Veuillez v√©rifier votre email pour confirmer votre compte.",
+                  });
+                });
+              }
+            );
+          }
+        );
+      });
+    }
+  );
+};
+
+// Fonction pour v√©rifier l'email
+exports.verifyEmail = (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(400).send("Jeton de v√©rification manquant.");
+  }
+
+  // V√©rifier le jeton JWT
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      console.error("Erreur lors de la v√©rification du jeton :", err);
+      return res.status(400).send("Jeton de v√©rification invalide ou expir√©.");
+    }
+
+    const userId = decoded.id;
+
+    // Trouver l'utilisateur avec ce jeton
+    db.query(
+      "SELECT * FROM users WHERE id = ? AND verificationToken = ?",
+      [userId, token],
+      (err, results) => {
+        if (err) {
+          console.error(
+            "Erreur lors de la requ√™te √† la base de donn√©es :",
+            err
+          );
+          return res.status(500).send("Erreur du serveur.");
+        }
+
+        if (results.length === 0) {
+          return res.status(400).send("Jeton de v√©rification invalide.");
+        }
+
+        // Mettre √† jour l'utilisateur comme v√©rifi√©
+        db.query(
+          "UPDATE users SET isVerified = 1, verificationToken = NULL WHERE id = ?",
+          [userId],
+          (err, updateResult) => {
+            if (err) {
+              console.error(
+                "Erreur lors de la mise √† jour de l'utilisateur :",
+                err
+              );
+              return res
+                .status(500)
+                .send("Erreur lors de la mise √† jour de l'utilisateur.");
+            }
+
+            res.send(
+              "Votre email a √©t√© v√©rifi√© avec succ√®s. Vous pouvez maintenant vous connecter."
+            );
+          }
+        );
+      }
+    );
+  });
+};
+
+// Fonction de connexion (login)
+exports.login = (req, res) => {
+  const { email, password } = req.body;
+
+  // V√©rifier si l'utilisateur existe
+  db.query("SELECT * FROM users WHERE email = ?", [email], (err, result) => {
+    if (err) {
+      return res.status(500).send("Erreur du serveur");
+    }
+    if (result.length === 0) {
+      return res.status(400).send("Utilisateur non trouv√©.");
+    }
+
+    const user = result[0];
+
+    // V√©rifier si l'utilisateur a v√©rifi√© son email
+    if (!user.isVerified) {
+      return res
+        .status(400)
+        .send("Veuillez v√©rifier votre adresse email avant de vous connecter.");
+    }
+
+    // Comparer le mot de passe avec le hachage stock√©
+    bcrypt.compare(password, user.password, (err, isMatch) => {
+      if (err) throw err;
+
+      if (isMatch) {
+        // G√©n√©rer un token JWT
+        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+          expiresIn: "1h",
+        });
+
+        // D√©finir le token dans un cookie HTTP-only
+        res.cookie("token", token, {
+          httpOnly: true,
+          // secure: true, // √Ä activer si vous utilisez HTTPS
+          maxAge: 3600000, // 1 heure en millisecondes
+        });
+
+        res.json({ message: "Connexion r√©ussie" });
+      } else {
+        res.status(400).send("Mot de passe incorrect");
+      }
+    });
+  });
+};
+
+// Configurer multer pour stocker les images dans un dossier local
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/"); // Les images seront sauvegard√©es dans le dossier "uploads"
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Nom unique pour chaque fichier
+  },
+});
+const upload = multer({ storage: storage });
+// Gestion de l'upload d'images (via fichier ou via base64 pour la webcam)
+exports.uploadImage = (req, res) => {
+  const { image } = req.body;
+  const userId = req.userId; // R√©cup√©rer l'ID de l'utilisateur depuis le token JWT
+
+  // V√©rifier si c'est une image envoy√©e via la webcam (Base64)
+  if (!image.startsWith("data:image/png;base64,")) {
+    return res.status(400).send("Format d'image non support√©.");
+  }
+
+  const base64Data = image.replace(/^data:image\/png;base64,/, "");
+  const userImageBuffer = Buffer.from(base64Data, "base64");
+  const filename = `${Date.now()}.png`;
+  const filePath = path.join(__dirname, "../uploads/", filename);
+
+  // Sauvegarder l'image sur le serveur
+  fs.writeFile(filePath, userImageBuffer, (err) => {
+    if (err) {
+      console.error("Erreur lors de la sauvegarde de l'image:", err);
+      return res.status(500).send("Erreur lors de la sauvegarde de l'image");
+    }
+
+    // Sauvegarder le chemin de l'image dans la base de donn√©es
+    db.query(
+      "INSERT INTO images (user_id, image_path) VALUES (?, ?)",
+      [userId, `/uploads/${filename}`],
+      (err, result) => {
+        if (err) {
+          console.error("Erreur lors de l'enregistrement de l'image:", err);
+          return res
+            .status(500)
+            .send("Erreur lors de l'enregistrement de l'image.");
+        }
+        res
+          .status(200)
+          .send({ message: "Image sauvegard√©e avec succ√®s", file: filename });
+      }
+    );
+  });
+};
+
+// R√©cup√©rer les images pagin√©es de tous les utilisateurs
+exports.getImages = (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 5;
+  const offset = (page - 1) * limit;
+
+  db.query(
+    "SELECT i.*, u.email FROM images i JOIN users u ON i.user_id = u.id ORDER BY i.created_at DESC LIMIT ? OFFSET ?",
+    [limit, offset],
+    (err, results) => {
+      if (err) {
+        console.error("Erreur lors de la r√©cup√©ration des images :", err);
+        return res
+          .status(500)
+          .send("Erreur lors de la r√©cup√©ration des images.");
+      }
+
+      // Une fois les images r√©cup√©r√©es, comptons le nombre total d'images
+      db.query("SELECT COUNT(*) as total FROM images", (err, countResult) => {
+        if (err) {
+          console.error("Erreur lors du comptage des images :", err);
+          return res.status(500).send("Erreur lors du comptage des images.");
+        }
+
+        const totalImages = countResult[0].total;
+        const hasMore = page * limit < totalImages;
+
+        res.status(200).json({
+          images: results, // images avec l'email inclus
+          hasMore: hasMore, // bool√©en pour savoir s'il y a encore des images apr√®s cette page
+        });
+      });
+    }
+  );
+};
+
+exports.getUserInfo = (req, res) => {
+  const userId = req.userId; // ID de l'utilisateur connect√© fourni par le middleware
+
+  db.query(
+    "SELECT username, email FROM users WHERE id = ?",
+    [userId],
+    (err, results) => {
+      if (err) {
+        console.error(
+          "Erreur lors de la r√©cup√©ration des informations utilisateur :",
+          err
+        );
+        return res
+          .status(500)
+          .json({ success: false, message: "Erreur serveur." });
+      }
+
+      if (results.length === 0) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Utilisateur non trouv√©." });
+      }
+
+      // Log pour v√©rifier que les informations sont correctement r√©cup√©r√©es
+      console.log("Informations utilisateur r√©cup√©r√©es :", results[0]);
+      res.status(200).json({ success: true, user: results[0] });
+    }
+  );
+};
+
+// Route pour modifier le profil (email et pseudo)
+exports.updateProfile = (req, res) => {
+  const { username, email } = req.body;
+  const userId = req.userId; // ID de l'utilisateur connect√© via le middleware
+
+  if (!username && !email) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Aucun changement √† appliquer." });
+  }
+
+  // Initialiser une liste pour stocker les champs √† mettre √† jour
+  const fieldsToUpdate = {};
+  if (username) fieldsToUpdate.username = username;
+  if (email) fieldsToUpdate.email = email;
+
+  // V√©rifier si l'email est d√©j√† utilis√© par un autre utilisateur
+  if (email) {
+    db.query(
+      "SELECT * FROM users WHERE email = ? AND id != ?",
+      [email, userId],
+      (err, result) => {
+        if (err)
+          return res
+            .status(500)
+            .json({ success: false, message: "Erreur du serveur." });
+
+        if (result.length > 0) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Cet email est d√©j√† utilis√©." });
+        }
+
+        // Mettre √† jour les informations de l'utilisateur
+        db.query(
+          "UPDATE users SET ? WHERE id = ?",
+          [fieldsToUpdate, userId],
+          (err) => {
+            if (err)
+              return res
+                .status(500)
+                .json({ success: false, message: "Erreur serveur." });
+
+            res.status(200).json({
+              success: true,
+              message: "Profil mis √† jour avec succ√®s.",
+            });
+          }
+        );
+      }
+    );
+  } else {
+    // Mettre √† jour si seul le pseudo est modifi√©
+    db.query(
+      "UPDATE users SET ? WHERE id = ?",
+      [fieldsToUpdate, userId],
+      (err) => {
+        if (err)
+          return res
+            .status(500)
+            .json({ success: false, message: "Erreur serveur." });
+
+        res
+          .status(200)
+          .json({ success: true, message: "Profil mis √† jour avec succ√®s." });
+      }
+    );
+  }
+};
+
+// Route pour modifier le mot de passe
+exports.updatePassword = (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.userId;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({
+      success: false,
+      message: "Veuillez fournir tous les champs requis.",
+    });
+  }
+
+  // R√©cup√©rer le mot de passe actuel de l'utilisateur depuis la base de donn√©es
+  db.query(
+    "SELECT password FROM users WHERE id = ?",
+    [userId],
+    async (err, result) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ success: false, message: "Erreur serveur." });
+
+      const user = result[0];
+      if (!user)
+        return res
+          .status(404)
+          .json({ success: false, message: "Utilisateur non trouv√©." });
+
+      // V√©rifier le mot de passe actuel
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch)
+        return res.status(400).json({
+          success: false,
+          message: "Le mot de passe actuel est incorrect.",
+        });
+
+      // Hacher et mettre √† jour le nouveau mot de passe
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      db.query(
+        "UPDATE users SET password = ? WHERE id = ?",
+        [hashedPassword, userId],
+        (err) => {
+          if (err)
+            return res
+              .status(500)
+              .json({ success: false, message: "Erreur serveur." });
+
+          res.status(200).json({
+            success: true,
+            message: "Mot de passe mis √† jour avec succ√®s.",
+          });
+        }
+      );
+    }
+  );
+};
+
+// Fonction pour lister les fichiers de calques
+exports.getFrames = (req, res) => {
+  const framesDir = path.join(__dirname, "../frames"); // Assure-toi que ce chemin est correct
+
+  // Lire le contenu du dossier
+  fs.readdir(framesDir, (err, files) => {
+    if (err) {
+      console.error(
+        "Erreur lors de la lecture des fichiers dans frames :",
+        err
+      );
+      return res.status(500).send("Erreur lors de la r√©cup√©ration des frames.");
+    }
+
+    // Filtrer uniquement les fichiers PNG
+    const frameFiles = files.filter((file) => file.endsWith(".png"));
+    res.status(200).json(frameFiles); // Retourner la liste des fichiers au format JSON
+  });
+};
+
+// Fonction pour v√©rifier si l'utilisateur a d√©j√† lik√© l'image
+exports.likeStatus = (req, res) => {
+  const imageId = req.params.imageId;
+  const userId = req.userId;
+
+  db.query(
+    "SELECT * FROM likes WHERE user_id = ? AND image_id = ?",
+    [userId, imageId],
+    (err, result) => {
+      if (err) {
+        return res
+          .status(500)
+          .send("Erreur lors de la v√©rification des likes.");
+      }
+
+      const liked = result.length > 0;
+      db.query(
+        "SELECT likes FROM images WHERE id = ?",
+        [imageId],
+        (err, rows) => {
+          if (err) {
+            return res
+              .status(500)
+              .send("Erreur lors de la r√©cup√©ration des likes.");
+          }
+          const likes = rows[0].likes;
+          res.status(200).json({ liked, likes });
+        }
+      );
+    }
+  );
+};
+
+// Fonction pour liker ou annuler un like sur une image
+exports.likeImage = (req, res) => {
+  const imageId = req.params.imageId;
+  const userId = req.userId;
+
+  // V√©rifier si l'utilisateur a d√©j√† lik√© l'image
+  db.query(
+    "SELECT * FROM likes WHERE user_id = ? AND image_id = ?",
+    [userId, imageId],
+    (err, result) => {
+      if (err) {
+        return res
+          .status(500)
+          .send("Erreur lors de la v√©rification des likes.");
+      }
+
+      if (result.length > 0) {
+        // L'utilisateur a d√©j√† lik√©, on retire le like
+        db.query(
+          "DELETE FROM likes WHERE user_id = ? AND image_id = ?",
+          [userId, imageId],
+          (err, result) => {
+            if (err) {
+              return res
+                .status(500)
+                .send("Erreur lors de la suppression du like.");
+            }
+
+            // D√©cr√©menter le compteur de likes de l'image
+            db.query(
+              "UPDATE images SET likes = likes - 1 WHERE id = ?",
+              [imageId],
+              (err, result) => {
+                if (err) {
+                  return res
+                    .status(500)
+                    .send(
+                      "Erreur lors de la mise √† jour du compteur de likes."
+                    );
+                }
+
+                return res.status(200).json({ message: "Like retir√©." });
+              }
+            );
+          }
+        );
+      } else {
+        // L'utilisateur n'a pas encore lik√©, on ajoute le like
+        db.query(
+          "INSERT INTO likes (user_id, image_id) VALUES (?, ?)",
+          [userId, imageId],
+          (err, result) => {
+            if (err) {
+              return res.status(500).send("Erreur lors de l'ajout du like.");
+            }
+
+            // Incr√©menter le compteur de likes de l'image
+            db.query(
+              "UPDATE images SET likes = likes + 1 WHERE id = ?",
+              [imageId],
+              (err, result) => {
+                if (err) {
+                  return res
+                    .status(500)
+                    .send(
+                      "Erreur lors de la mise √† jour du compteur de likes."
+                    );
+                }
+
+                return res.status(200).json({ message: "Like ajout√©." });
+              }
+            );
+          }
+        );
+      }
+    }
+  );
+};
+
+// Fonction pour ajouter un commentaire
+exports.addComment = (req, res) => {
+  const userId = req.userId; // R√©cup√©rer l'ID de l'utilisateur depuis le middleware
+  const { comment } = req.body; // R√©cup√©rer le commentaire
+  const imageId = req.params.imageId; // L'ID de l'image √† commenter
+  console.log("Commentaire re√ßu :", comment);
+
+  // V√©rifier que le commentaire n'est pas vide
+  if (!comment || comment.trim() === "") {
+    return res.status(400).send("Le commentaire ne peut pas √™tre vide.");
+  }
+
+  // Ins√©rer le commentaire dans la base de donn√©es
+  db.query(
+    "INSERT INTO comments (image_id, user_id, comment) VALUES (?, ?, ?)",
+    [imageId, userId, comment],
+    (err, result) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send("Erreur lors de l'ajout du commentaire.");
+      }
+      // R√©cup√©rer les informations de l'auteur de la photo et du commentateur
+      db.query(
+        "SELECT u.email AS ownerEmail, u.username AS ownerUsername, c.username AS commenterUsername FROM images i JOIN users u ON i.user_id = u.id JOIN users c ON c.id = ? WHERE i.id = ?",
+        [userId, imageId],
+        (err, results) => {
+          if (err) {
+            console.error(
+              "Erreur lors de la r√©cup√©ration des informations:",
+              err
+            );
+            return; // On ne bloque pas la r√©ponse en cas d'erreur d'envoi d'email
+          }
+
+          if (results.length > 0) {
+            const { ownerEmail, commenterUsername } = results[0];
+
+            // D√©finir les options de l'email
+            const mailOptions = {
+              from: '"Camagru Support" illidan888@hotmail.fr',
+              to: ownerEmail,
+              subject: "Nouveau commentaire sur votre photo",
+              html: `
+			<p>Bonjour ${results[0].ownerUsername},</p>
+			<p>${commenterUsername} a comment√© votre photo :</p>
+			<blockquote>${comment}</blockquote>
+			<p>Merci de consulter votre galerie pour voir ce commentaire !</p>
+		  `,
+            };
+
+            // Envoyer l'email
+            transporter.sendMail(mailOptions, (error, info) => {
+              if (error) {
+                console.error("Erreur lors de l'envoi de l'email:", error);
+              } else {
+                console.log("Email envoy√© avec succ√®s:", info.response);
+              }
+            });
+          }
+        }
+      );
+
+      res.status(201).send({ message: "Commentaire ajout√© avec succ√®s." });
+    }
+  );
+};
+
+// Fonction pour r√©cup√©rer les commentaires d'une image
+exports.getComments = (req, res) => {
+  const imageId = req.params.imageId;
+
+  db.query(
+    "SELECT comments.comment, comments.created_at, users.email FROM comments JOIN users ON comments.user_id = users.id WHERE image_id = ? ORDER BY comments.created_at DESC",
+    [imageId],
+    (err, results) => {
+      if (err) {
+        console.error(err);
+        return res
+          .status(500)
+          .send("Erreur lors de la r√©cup√©ration des commentaires.");
+      }
+      res.status(200).json(results);
+    }
+  );
+};
+
+// R√©cup√©rer les images de l'utilisateur connect√©
+exports.getUserImages = (req, res) => {
+  const userId = req.userId; // R√©cup√©rer l'ID de l'utilisateur depuis le token
+
+  db.query(
+    "SELECT * FROM images WHERE user_id = ?",
+    [userId],
+    (err, results) => {
+      if (err) {
+        console.error(
+          "Erreur lors de la r√©cup√©ration des images de l'utilisateur :",
+          err
+        );
+        return res
+          .status(500)
+          .send("Erreur lors de la r√©cup√©ration des images.");
+      }
+      res.status(200).json(results);
+    }
+  );
+};
+
+// Supprimer une image
+exports.deleteImage = (req, res) => {
+  const imageId = req.params.imageId;
+  const userId = req.userId; // ID de l'utilisateur connect√©
+
+  // R√©cup√©rer le chemin de l'image depuis la base de donn√©es avant la suppression
+  db.query(
+    "SELECT image_path FROM images WHERE id = ? AND user_id = ?",
+    [imageId, userId],
+    (err, result) => {
+      if (err) {
+        console.error("Erreur lors de la r√©cup√©ration de l'image :", err);
+        return res
+          .status(500)
+          .send("Erreur lors de la r√©cup√©ration de l'image.");
+      }
+
+      if (result.length === 0) {
+        return res.status(404).send({ message: "Image non trouv√©e." });
+      }
+
+      const filePath = path.join(__dirname, "..", result[0].image_path); // Chemin de l'image
+
+      // Supprimer l'image de la base de donn√©es
+      db.query(
+        "DELETE FROM images WHERE id = ? AND user_id = ?",
+        [imageId, userId],
+        (err, result) => {
+          if (err) {
+            console.error(
+              "Erreur lors de la suppression de l'image dans la base de donn√©es :",
+              err
+            );
+            return res
+              .status(500)
+              .send("Erreur lors de la suppression de l'image.");
+          }
+
+          // Supprimer le fichier image du dossier uploads
+          fs.unlink(filePath, (err) => {
+            if (err) {
+              console.error(
+                "Erreur lors de la suppression du fichier image :",
+                err
+              );
+              // L'erreur de suppression de fichier n'emp√™che pas la r√©ponse de succ√®s
+            }
+            res.status(200).send({ message: "Image supprim√©e avec succ√®s" });
+          });
+        }
+      );
+    }
+  );
+};
+
+// Fonction pour r√©initialiser le mot de passe (mot de passe oubli√©)
+exports.forgotPassword = (req, res) => {
+  const { email } = req.body;
+
+  // V√©rifier si l'utilisateur existe dans la base de donn√©es
+  db.query("SELECT * FROM users WHERE email = ?", [email], (err, result) => {
+    if (err) {
+      console.error("Erreur serveur:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Erreur serveur." });
+    }
+
+    if (result.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Email non trouv√©." });
+    }
+
+    const userId = result[0].id;
+
+    // G√©n√©rer un token de r√©initialisation de mot de passe
+    const resetToken = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    // D√©finir les options de l'email
+    const mailOptions = {
+      from: '"Camagru Support" illidan888@hotmail.fr',
+      to: email,
+      subject: "R√©initialisation de votre mot de passe Camagru",
+      html: `
+		  <p>Bonjour,</p>
+		  <p>Cliquez sur le lien suivant pour r√©initialiser votre mot de passe :</p>
+		  <a href="http://localhost:3000/auth/reset-password?token=${resetToken}">R√©initialiser mon mot de passe</a>
+		  <p>Ce lien expirera dans 1 heure.</p>
+		`,
+    };
+
+    // Envoyer l'email de r√©initialisation
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Erreur d'envoi d'email:", error);
+        return res
+          .status(500)
+          .json({ success: false, message: "Erreur d'envoi d'email." });
+      }
+      console.log("Email de r√©initialisation envoy√©:", info.response);
+      res.json({
+        success: true,
+        message: "Lien de r√©initialisation envoy√© par email.",
+      });
+    });
+  });
+};
+
+// Fonction pour r√©initialiser le mot de passe apr√®s que l'utilisateur ait cliqu√© sur le lien
+exports.resetPassword = (req, res) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Param√®tres manquants." });
+  }
+
+  // V√©rifier le token JWT
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      console.error("Erreur de v√©rification du token :", err);
+      return res
+        .status(400)
+        .json({ success: false, message: "Token invalide ou expir√©." });
+    }
+
+    const userId = decoded.id;
+
+    // Hacher le nouveau mot de passe
+    bcrypt.hash(newPassword, 10, (err, hashedPassword) => {
+      if (err) {
+        console.error("Erreur lors du hachage du mot de passe :", err);
+        return res
+          .status(500)
+          .json({ success: false, message: "Erreur serveur." });
+      }
+
+      // Mettre √† jour le mot de passe dans la base de donn√©es
+      db.query(
+        "UPDATE users SET password = ? WHERE id = ?",
+        [hashedPassword, userId],
+        (err, result) => {
+          if (err) {
+            console.error(
+              "Erreur lors de la mise √† jour du mot de passe :",
+              err
+            );
+            return res
+              .status(500)
+              .json({ success: false, message: "Erreur serveur." });
+          }
+
+          res.status(200).json({
+            success: true,
+            message: "Mot de passe r√©initialis√© avec succ√®s.",
+          });
+        }
+      );
+    });
+  });
+};
+
+// Fonction pour mettre √† jour la pr√©f√©rence de notification par email
+exports.updateNotificationPreference = (req, res) => {
+  const { receiveEmailNotifications } = req.body;
+  const userId = req.userId; // ID de l'utilisateur connect√© fourni par le middleware
+
+  db.query(
+    "UPDATE users SET receive_email_notifications = ? WHERE id = ?",
+    [receiveEmailNotifications ? 1 : 0, userId],
+    (err, result) => {
+      if (err) {
+        console.error(
+          "Erreur lors de la mise √† jour de la pr√©f√©rence de notification :",
+          err
+        );
+        return res
+          .status(500)
+          .json({ success: false, message: "Erreur serveur." });
+      }
+      res.status(200).json({
+        success: true,
+        message: "Pr√©f√©rence de notification mise √† jour avec succ√®s.",
+      });
+    }
+  );
+};
+-e 
+
+==== ./src/models/User.js ====
+const db = require("../../config/database");
+const bcrypt = require("bcrypt");
+
+// Fonction pour trouver un utilisateur par email
+const findUserByEmail = (email, callback) => {
+  db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
+    if (err) return callback(err);
+    callback(null, results[0]);
+  });
+};
+
+// Fonction pour cr√©er un nouvel utilisateur
+const createUser = (email, password, callback) => {
+  // Hachage du mot de passe
+  bcrypt.hash(password, 10, (err, hash) => {
+    if (err) return callback(err);
+
+    // Ins√©rer l'utilisateur dans la base de donn√©es
+    db.query(
+      "INSERT INTO users (email, password) VALUES (?, ?)",
+      [email, hash],
+      (err, results) => {
+        if (err) return callback(err);
+        callback(null, results);
+      }
+    );
+  });
+};
+
+// Fonction pour comparer un mot de passe avec le hach√©
+const comparePassword = (password, hash, callback) => {
+  console.log("Mot de passe fourni pour la comparaison:", password); // Log du mot de passe fourni
+  console.log("Mot de passe hach√© stock√© dans la base de donn√©es:", hash); // Log du hash dans la BDD
+
+  bcrypt.compare(password, hash, (err, isMatch) => {
+    if (err) return callback(err);
+    console.log("Le mot de passe correspond-il ?", isMatch); // Ajoute un log pour v√©rifier si √ßa correspond
+    callback(null, isMatch);
+  });
+};
+
+module.exports = {
+  findUserByEmail,
+  createUser,
+  comparePassword,
+};
+-e 
+

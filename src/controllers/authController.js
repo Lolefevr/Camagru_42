@@ -319,12 +319,12 @@ exports.getImages = (req, res) => {
 };
 
 exports.getUserInfo = (req, res) => {
-  const userId = req.userId; // ID de l'utilisateur connecté fourni par le middleware
+  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token
 
   db.query(
-    "SELECT username, email FROM users WHERE id = ?",
+    "SELECT email, username, receive_email_notifications FROM users WHERE id = ?",
     [userId],
-    (err, results) => {
+    (err, result) => {
       if (err) {
         console.error(
           "Erreur lors de la récupération des informations utilisateur :",
@@ -332,18 +332,17 @@ exports.getUserInfo = (req, res) => {
         );
         return res
           .status(500)
-          .json({ success: false, message: "Erreur serveur." });
+          .json({ success: false, message: "Erreur du serveur." });
       }
 
-      if (results.length === 0) {
+      if (result.length === 0) {
         return res
           .status(404)
           .json({ success: false, message: "Utilisateur non trouvé." });
       }
 
-      // Log pour vérifier que les informations sont correctement récupérées
-      console.log("Informations utilisateur récupérées :", results[0]);
-      res.status(200).json({ success: true, user: results[0] });
+      const user = result[0];
+      res.status(200).json({ success: true, user });
     }
   );
 };
@@ -609,12 +608,10 @@ exports.likeImage = (req, res) => {
 
 // Fonction pour ajouter un commentaire
 exports.addComment = (req, res) => {
-  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le middleware
-  const { comment } = req.body; // Récupérer le commentaire
-  const imageId = req.params.imageId; // L'ID de l'image à commenter
-  console.log("Commentaire reçu :", comment);
+  const userId = req.userId; // L'ID de l'utilisateur qui commente
+  const { comment } = req.body;
+  const imageId = req.params.imageId;
 
-  // Vérifier que le commentaire n'est pas vide
   if (!comment || comment.trim() === "") {
     return res.status(400).send("Le commentaire ne peut pas être vide.");
   }
@@ -628,48 +625,95 @@ exports.addComment = (req, res) => {
         console.error(err);
         return res.status(500).send("Erreur lors de l'ajout du commentaire.");
       }
-      // Récupérer les informations de l'auteur de la photo et du commentateur
+
+      // Récupérer l'ID du propriétaire de l'image
       db.query(
-        "SELECT u.email AS ownerEmail, u.username AS ownerUsername, c.username AS commenterUsername FROM images i JOIN users u ON i.user_id = u.id JOIN users c ON c.id = ? WHERE i.id = ?",
-        [userId, imageId],
-        (err, results) => {
+        "SELECT user_id FROM images WHERE id = ?",
+        [imageId],
+        (err, imageResult) => {
           if (err) {
-            console.error(
-              "Erreur lors de la récupération des informations:",
-              err
-            );
-            return; // On ne bloque pas la réponse en cas d'erreur d'envoi d'email
+            console.error(err);
+            return res
+              .status(500)
+              .send("Erreur lors de la récupération de l'image.");
           }
 
-          if (results.length > 0) {
-            const { ownerEmail, commenterUsername } = results[0];
+          if (imageResult.length === 0) {
+            return res.status(404).send("Image non trouvée.");
+          }
 
-            // Définir les options de l'email
-            const mailOptions = {
-              from: '"Camagru Support" illidan888@hotmail.fr',
-              to: ownerEmail,
-              subject: "Nouveau commentaire sur votre photo",
-              html: `
-			<p>Bonjour ${results[0].ownerUsername},</p>
-			<p>${commenterUsername} a commenté votre photo :</p>
-			<blockquote>${comment}</blockquote>
-			<p>Merci de consulter votre galerie pour voir ce commentaire !</p>
-		  `,
-            };
+          const imageOwnerId = imageResult[0].user_id;
 
-            // Envoyer l'email
-            transporter.sendMail(mailOptions, (error, info) => {
-              if (error) {
-                console.error("Erreur lors de l'envoi de l'email:", error);
-              } else {
-                console.log("Email envoyé avec succès:", info.response);
+          // Ne pas envoyer d'email si l'utilisateur commente sa propre image
+          if (imageOwnerId === userId) {
+            return res
+              .status(201)
+              .send({ message: "Commentaire ajouté avec succès." });
+          }
+
+          // Récupérer l'email et la préférence de notification du propriétaire de l'image
+          db.query(
+            "SELECT email, receive_email_notifications FROM users WHERE id = ?",
+            [imageOwnerId],
+            (err, userResult) => {
+              if (err) {
+                console.error(err);
+                return res
+                  .status(500)
+                  .send("Erreur lors de la récupération de l'utilisateur.");
               }
-            });
-          }
+
+              if (userResult.length === 0) {
+                return res
+                  .status(404)
+                  .send("Propriétaire de l'image non trouvé.");
+              }
+
+              const imageOwnerEmail = userResult[0].email;
+              const receiveEmailNotifications =
+                userResult[0].receive_email_notifications;
+
+              if (
+                receiveEmailNotifications === 1 ||
+                receiveEmailNotifications === "1"
+              ) {
+                // Envoyer l'email de notification
+                const mailOptions = {
+                  from: '"Camagru Support" illidan888@hotmail.fr', // Remplacez par votre expéditeur vérifié
+                  to: imageOwnerEmail,
+                  subject: "Nouveau commentaire sur votre image Camagru",
+                  text: `Bonjour,\n\nUn utilisateur a commenté votre image :\n\n"${comment}"\n\nMerci !`,
+                  html: `<p>Bonjour,</p><p>Un utilisateur a commenté votre image :</p><p>"${comment}"</p><p>Merci !</p>`,
+                };
+
+                transporter.sendMail(mailOptions, (error, info) => {
+                  if (error) {
+                    console.error(
+                      "Erreur lors de l'envoi de l'email de notification :",
+                      error
+                    );
+                    // Ne pas échouer la requête si l'envoi de l'email échoue
+                    return res.status(201).send({
+                      message:
+                        "Commentaire ajouté avec succès, mais échec de l'envoi de l'email.",
+                    });
+                  }
+                  console.log("Email de notification envoyé :", info.response);
+                  return res.status(201).send({
+                    message:
+                      "Commentaire ajouté avec succès. Un email a été envoyé au propriétaire de l'image.",
+                  });
+                });
+              } else {
+                // Ne pas envoyer d'email
+                return res
+                  .status(201)
+                  .send({ message: "Commentaire ajouté avec succès." });
+              }
+            }
+          );
         }
       );
-
-      res.status(201).send({ message: "Commentaire ajouté avec succès." });
     }
   );
 };
@@ -902,6 +946,40 @@ exports.updateNotificationPreference = (req, res) => {
       res.status(200).json({
         success: true,
         message: "Préférence de notification mise à jour avec succès.",
+      });
+    }
+  );
+};
+
+exports.updateNotificationPreference = (req, res) => {
+  const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le token
+  const { receiveEmailNotifications } = req.body;
+
+  // Validation de l'entrée
+  if (receiveEmailNotifications !== "0" && receiveEmailNotifications !== "1") {
+    return res.status(400).json({
+      success: false,
+      message: "Valeur invalide pour receiveEmailNotifications",
+    });
+  }
+
+  // Mettre à jour la table des utilisateurs
+  db.query(
+    "UPDATE users SET receive_email_notifications = ? WHERE id = ?",
+    [receiveEmailNotifications, userId],
+    (err, result) => {
+      if (err) {
+        console.error(
+          "Erreur lors de la mise à jour des préférences de notification:",
+          err
+        );
+        return res
+          .status(500)
+          .json({ success: false, message: "Erreur du serveur." });
+      }
+      return res.status(200).json({
+        success: true,
+        message: "Préférences de notification mises à jour avec succès.",
       });
     }
   );
