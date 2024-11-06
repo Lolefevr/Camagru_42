@@ -24,7 +24,6 @@ exports.logout = (req, res) => {
 };
 
 // Fonction d'inscription (register)
-// Fonction d'inscription (register)
 exports.register = (req, res) => {
   const { email, username, password } = req.body; // Inclure username
 
@@ -288,8 +287,9 @@ exports.getImages = (req, res) => {
   const limit = parseInt(req.query.limit) || 5;
   const offset = (page - 1) * limit;
 
+  // Modification de la requête SQL pour récupérer le username au lieu de l'email
   db.query(
-    "SELECT i.*, u.email FROM images i JOIN users u ON i.user_id = u.id ORDER BY i.created_at DESC LIMIT ? OFFSET ?",
+    "SELECT i.*, u.username FROM images i JOIN users u ON i.user_id = u.id ORDER BY i.created_at DESC LIMIT ? OFFSET ?",
     [limit, offset],
     (err, results) => {
       if (err) {
@@ -299,7 +299,7 @@ exports.getImages = (req, res) => {
           .send("Erreur lors de la récupération des images.");
       }
 
-      // Une fois les images récupérées, comptons le nombre total d'images
+      // Compter le nombre total d'images pour gérer la pagination
       db.query("SELECT COUNT(*) as total FROM images", (err, countResult) => {
         if (err) {
           console.error("Erreur lors du comptage des images :", err);
@@ -310,7 +310,7 @@ exports.getImages = (req, res) => {
         const hasMore = page * limit < totalImages;
 
         res.status(200).json({
-          images: results, // images avec l'email inclus
+          images: results, // images avec le username inclus
           hasMore: hasMore, // booléen pour savoir s'il y a encore des images après cette page
         });
       });
@@ -723,7 +723,7 @@ exports.getComments = (req, res) => {
   const imageId = req.params.imageId;
 
   db.query(
-    "SELECT comments.comment, comments.created_at, users.email FROM comments JOIN users ON comments.user_id = users.id WHERE image_id = ? ORDER BY comments.created_at DESC",
+    "SELECT comments.comment, comments.created_at, users.username FROM comments JOIN users ON comments.user_id = users.id WHERE image_id = ? ORDER BY comments.created_at DESC",
     [imageId],
     (err, results) => {
       if (err) {
