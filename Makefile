@@ -6,7 +6,10 @@ DOCKER_COMPOSE = docker-compose
 
 # Build (construit, installe les dépendances npm, et démarre en mode détaché)
 build:
+	mkdir -p ./src/uploads
 	$(DOCKER_COMPOSE) up --build -d
+
+
 
 # Démarrer les conteneurs en mode détaché (sans rebuild)
 up:

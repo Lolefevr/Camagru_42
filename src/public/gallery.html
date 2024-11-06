@@ -5,210 +5,83 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Galerie d'images</title>
-    <style>
-      body {
-        display: grid;
-        grid-template-areas:
-          "header"
-          "main"
-          "footer";
-        grid-template-rows: auto 1fr auto;
-        height: 100vh;
-        margin: 0;
-      }
-
-      header {
-        grid-area: header;
-        background-color: #333;
-        color: white;
-        padding: 1rem;
-        text-align: center;
-        position: relative;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .nav-links {
-        display: flex;
-        gap: 20px;
-      }
-
-      .nav-links a {
-        color: white;
-        text-decoration: none;
-        font-size: 1.2rem;
-        padding: 10px 15px;
-        background-color: transparent;
-        border: none;
-        cursor: pointer;
-      }
-
-      .nav-links a.active {
-        background-color: #555;
-        border-radius: 5px;
-      }
-
-      footer {
-        grid-area: footer;
-        background-color: #333;
-        color: white;
-        text-align: center;
-        padding: 1rem;
-      }
-
-      main {
-        grid-area: main;
-        padding: 1rem;
-        background-color: #f4f4f4;
-        overflow-y: auto;
-      }
-
-      .logout-btn {
-        background-color: red;
-        color: white;
-        padding: 10px 20px;
-        border: none;
-        cursor: pointer;
-        border-radius: 5px;
-      }
-
-      img {
-        max-width: 100%;
-        height: auto;
-        margin-bottom: 10px;
-        display: block;
-      }
-
-      .image-container {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 20px;
-        border-bottom: 1px solid #ccc;
-        padding-bottom: 10px;
-      }
-
-      .username {
-        font-weight: bold;
-        margin-left: 20px;
-      }
-
-      button {
-        margin-top: 10px;
-      }
-
-      .pagination {
-        text-align: center;
-        margin-top: 20px;
-      }
-
-      .pagination button {
-        padding: 10px 15px;
-        margin: 0 5px;
-        background-color: #333;
-        color: white;
-        border: none;
-        cursor: pointer;
-      }
-
-      /* Responsive Design */
-      @media screen and (max-width: 768px) {
-        body {
-          grid-template-areas:
-            "header"
-            "main"
-            "footer";
-          grid-template-columns: 1fr;
-          grid-template-rows: auto 1fr auto;
-        }
-
-        header {
-          flex-direction: column;
-        }
-
-        .nav-links {
-          flex-direction: column;
-          align-items: center;
-          gap: 10px; /* Réduire l'espace entre les liens */
-        }
-
-        .nav-links a {
-          padding: 10px;
-          width: 100%;
-          text-align: center;
-        }
-
-        main {
-          padding: 0.5rem;
-        }
-
-        .image-container {
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-        }
-
-        img {
-          width: 100%; /* L'image prend toute la largeur sur mobile */
-          max-width: 100%;
-          height: auto;
-        }
-
-        .pagination {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-
-        .pagination button {
-          width: 100%;
-          margin-bottom: 10px; /* Ajouter un espace entre les boutons de pagination */
-        }
-
-        .logout-btn {
-          width: 100%;
-          margin-top: 10px;
-          padding: 10px 0; /* Ajuster la hauteur du bouton */
-          text-align: center;
-        }
-      }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body>
-    <header>
-      <div class="nav-links">
-        <a href="/gallery" id="gallery-link" class="active">Gallery</a>
-        <a href="/camera" id="dashboard-link">Dashboard</a>
-        <a href="/settings" id="settings-link">Settings</a>
-      </div>
-      <button class="logout-btn">Déconnexion</button>
+  <body class="flex flex-col h-screen bg-gray-100">
+    <!-- Header -->
+    <header
+      class="bg-gray-800 text-white p-4 flex justify-between items-center"
+    >
+      <nav class="flex space-x-4">
+        <a
+          href="/gallery"
+          id="gallery-link"
+          class="text-white px-3 py-2 rounded hover:bg-gray-700 active:bg-gray-600"
+          >Gallery</a
+        >
+        <a
+          href="/camera"
+          id="dashboard-link"
+          class="text-white px-3 py-2 rounded hover:bg-gray-700 active:bg-gray-600"
+          >Dashboard</a
+        >
+        <a
+          href="/settings"
+          id="settings-link"
+          class="text-white px-3 py-2 rounded hover:bg-gray-700 active:bg-gray-600"
+          >Settings</a
+        >
+      </nav>
+      <button
+        class="logout-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+      >
+        Déconnexion
+      </button>
     </header>
 
-    <main>
-      <div id="gallery"></div>
-      <div class="pagination">
-        <button id="prev-page" disabled>Précédent</button>
-        <button id="next-page">Suivant</button>
+    <!-- Main content -->
+    <main class="flex-1 overflow-y-auto p-6">
+      <div id="gallery" class="flex flex-col items-center gap-4">
+        <!-- Grille pour la première ligne de 3 images -->
+        <div
+          id="first-row"
+          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
+        ></div>
+
+        <!-- Grille pour la deuxième ligne, avec ajustement dynamique -->
+        <div id="second-row" class="grid gap-4 justify-center"></div>
+      </div>
+
+      <!-- Pagination buttons -->
+      <div class="pagination flex justify-center mt-6">
+        <button
+          id="prev-page"
+          class="px-4 py-2 bg-gray-800 text-white rounded-l disabled:opacity-50"
+          disabled
+        >
+          Précédent
+        </button>
+        <button
+          id="next-page"
+          class="px-4 py-2 bg-gray-800 text-white rounded-r"
+        >
+          Suivant
+        </button>
       </div>
     </main>
 
-    <footer>
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white text-center py-3">
       <p>Camagru © 2024</p>
     </footer>
 
     <script>
-      // Fonction pour obtenir le token CSRF
       function getCsrfToken() {
-        return fetch("/auth/csrf-token", {
-          credentials: "include", // Inclure les cookies dans la requête
-        })
+        return fetch("/auth/csrf-token", { credentials: "include" })
           .then((res) => res.json())
           .then((data) => data.csrfToken);
       }
 
-      // Fonction pour échapper les caractères spéciaux
       function escapeHTML(str) {
         return str
           .replace(/&/g, "&amp;")
@@ -218,227 +91,207 @@
           .replace(/'/g, "&#039;");
       }
 
-      // Marquer le lien actif
       const currentUrl = window.location.pathname;
-      if (currentUrl === "/gallery") {
-        document.getElementById("gallery-link").classList.add("active");
-      } else if (currentUrl === "/camera") {
-        document.getElementById("dashboard-link").classList.add("active");
-      } else if (currentUrl === "/settings") {
-        document.getElementById("settings-link").classList.add("active");
-      }
+      if (currentUrl === "/gallery")
+        document.getElementById("gallery-link").classList.add("bg-gray-700");
+      else if (currentUrl === "/camera")
+        document.getElementById("dashboard-link").classList.add("bg-gray-700");
+      else if (currentUrl === "/settings")
+        document.getElementById("settings-link").classList.add("bg-gray-700");
 
       let currentPage = 1;
-      const imagesPerPage = 5; // Limite d'images par page
+      const imagesPerPage = 5;
 
-      // Vérification du token au chargement
       window.addEventListener("load", async function () {
-        const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
+        const csrfToken = await getCsrfToken();
         fetch("/auth/verify-token", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "CSRF-Token": csrfToken, // Inclure le token CSRF
+            "CSRF-Token": csrfToken,
           },
-          credentials: "include", // Inclure les cookies
+          credentials: "include",
         })
           .then((response) => {
-            if (!response.ok) {
-              window.location.href = "/";
-            }
+            if (!response.ok) window.location.href = "/";
           })
           .catch((err) => {
             console.error("Erreur lors de la vérification du token :", err);
             window.location.href = "/";
           });
 
-        loadImages(currentPage); // Charger les images au chargement de la page
+        loadImages(currentPage);
       });
 
-      // Fonction de déconnexion
       document
         .querySelector(".logout-btn")
         .addEventListener("click", async () => {
-          const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
+          const csrfToken = await getCsrfToken();
           fetch("/auth/logout", {
             method: "POST",
-            headers: {
-              "CSRF-Token": csrfToken, // Inclure le token CSRF
-            },
-            credentials: "include", // Inclure les cookies
+            headers: { "CSRF-Token": csrfToken },
+            credentials: "include",
           })
             .then((response) => {
-              if (response.ok) {
-                window.location.href = "/"; // Rediriger vers la page d'accueil
-              } else {
-                throw new Error("Erreur lors de la déconnexion");
-              }
+              if (response.ok) window.location.href = "/";
             })
-            .catch((error) => {
-              console.error("Erreur lors de la déconnexion :", error);
-            });
+            .catch((error) =>
+              console.error("Erreur lors de la déconnexion :", error)
+            );
         });
 
-      // Récupérer les images et afficher la galerie avec pagination
       function loadImages(page) {
         fetch(`/auth/images?page=${page}&limit=${imagesPerPage}`, {
-          credentials: "include", // Inclure les cookies
+          credentials: "include",
         })
           .then((response) => response.json())
           .then((data) => {
-            const galleryDiv = document.getElementById("gallery");
-            galleryDiv.innerHTML = ""; // Vider la galerie avant de recharger
+            const firstRowDiv = document.getElementById("first-row");
+            const secondRowDiv = document.getElementById("second-row");
+            firstRowDiv.innerHTML = "";
+            secondRowDiv.innerHTML = "";
 
             if (data.images.length === 0) {
-              galleryDiv.innerHTML = "<p>Aucune image à afficher.</p>";
+              firstRowDiv.innerHTML =
+                "<p class='text-center'>Aucune image à afficher.</p>";
             } else {
-              data.images.forEach((image) => {
-                const imgContainer = document.createElement("div");
-                imgContainer.classList.add("image-container");
+              // Ajouter les 3 premières images dans la première ligne
+              data.images
+                .slice(0, 3)
+                .forEach((image) => createImageCard(image, firstRowDiv));
 
-                const img = document.createElement("img");
-                img.src = image.image_path;
-                img.width = 200;
+              // Ajouter les images restantes dans la seconde ligne
+              const secondRowImages = data.images.slice(3);
+              secondRowDiv.className =
+                secondRowImages.length === 1
+                  ? "grid grid-cols-1 justify-center gap-4"
+                  : "grid grid-cols-2 justify-center gap-4";
 
-                // Vérifie ici que l'email est bien récupéré et affiché
-                const email = document.createElement("div");
-                email.classList.add("username");
-                email.textContent = `Par : ${
-                  image.email ? escapeHTML(image.email) : "Inconnu"
-                }`;
+              secondRowImages.forEach((image) =>
+                createImageCard(image, secondRowDiv)
+              );
 
-                const likeButton = document.createElement("button");
-                const commentForm = document.createElement("form");
-                const commentInput = document.createElement("input");
-                const commentButton = document.createElement("button");
-                const commentSection = document.createElement("div");
-
-                // Charger l'état du like (vérifier si l'utilisateur a liké l'image)
-                fetch(`/auth/like-status/${image.id}`, {
-                  credentials: "include", // Inclure les cookies
-                })
-                  .then((response) => response.json())
-                  .then((likeData) => {
-                    likeButton.textContent = likeData.liked
-                      ? `Unlike (${escapeHTML(String(likeData.likes))})`
-                      : `Like (${escapeHTML(String(likeData.likes))})`;
-                  });
-
-                // Gestion des likes (ajouter ou retirer un like)
-                likeButton.addEventListener("click", async () => {
-                  const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
-                  fetch(`/auth/like/${image.id}`, {
-                    method: "POST",
-                    headers: {
-                      "CSRF-Token": csrfToken, // Inclure le token CSRF
-                    },
-                    credentials: "include", // Inclure les cookies
-                  })
-                    .then((response) => response.json())
-                    .then((data) => {
-                      // Mettre à jour le bouton après un like/unlike
-                      fetch(`/auth/like-status/${image.id}`, {
-                        credentials: "include", // Inclure les cookies
-                      })
-                        .then((response) => response.json())
-                        .then((likeData) => {
-                          likeButton.textContent = likeData.liked
-                            ? `Unlike (${likeData.likes})`
-                            : `Like (${likeData.likes})`;
-                        });
-                    })
-                    .catch((error) => {
-                      console.error(
-                        "Erreur lors de la gestion du like :",
-                        error
-                      );
-                    });
-                });
-
-                // Formulaire pour ajouter un commentaire
-                commentInput.placeholder = "Ajouter un commentaire...";
-                commentButton.textContent = "Envoyer";
-                commentButton.type = "submit";
-                commentForm.appendChild(commentInput);
-                commentForm.appendChild(commentButton);
-
-                // Gestion des commentaires : soumettre un commentaire
-                commentForm.addEventListener("submit", async (e) => {
-                  e.preventDefault();
-                  const comment = commentInput.value;
-                  if (comment) {
-                    const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
-                    fetch(`/auth/comment/${image.id}`, {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "CSRF-Token": csrfToken, // Inclure le token CSRF
-                      },
-                      credentials: "include", // Inclure les cookies
-                      body: JSON.stringify({ comment }),
-                    })
-                      .then((response) => response.json())
-                      .then((data) => {
-                        commentInput.value = ""; // Réinitialiser le champ de commentaire
-                        loadComments(image.id, commentSection); // Recharger les commentaires après ajout
-                      })
-                      .catch((error) => {
-                        console.error(
-                          "Erreur lors de l'ajout du commentaire :",
-                          error
-                        );
-                      });
-                  }
-                });
-
-                imgContainer.appendChild(img);
-                imgContainer.appendChild(email);
-                galleryDiv.appendChild(imgContainer);
-                imgContainer.appendChild(likeButton);
-                imgContainer.appendChild(commentForm);
-                imgContainer.appendChild(commentSection);
-
-                // Charger les commentaires pour cette image
-                loadComments(image.id, commentSection);
-              });
-
-              // Mettre à jour l'état des boutons de pagination
-              const prevButton = document.getElementById("prev-page");
-              const nextButton = document.getElementById("next-page");
-
-              prevButton.disabled = page === 1;
-              nextButton.disabled = !data.hasMore;
+              document.getElementById("prev-page").disabled = page === 1;
+              document.getElementById("next-page").disabled = !data.hasMore;
             }
           })
-          .catch((error) => {
-            console.error("Erreur lors de la récupération des images :", error);
+          .catch((error) =>
+            console.error("Erreur lors de la récupération des images :", error)
+          );
+      }
+
+      function createImageCard(image, container) {
+        const imgContainer = document.createElement("div");
+        imgContainer.className = "bg-white p-4 shadow rounded-lg max-w-sm";
+
+        const img = document.createElement("img");
+        img.src = image.image_path;
+        img.alt = "Image utilisateur";
+        img.className = "w-full rounded mb-2";
+
+        const username = document.createElement("p");
+        username.className = "text-gray-600 text-sm mb-2";
+        username.textContent = `Par : ${
+          image.username ? escapeHTML(image.username) : "Inconnu"
+        }`;
+
+        const likeButton = document.createElement("button");
+        likeButton.className = "text-sm text-blue-500 underline mb-2";
+
+        fetch(`/auth/like-status/${image.id}`, { credentials: "include" })
+          .then((response) => response.json())
+          .then((likeData) => {
+            likeButton.textContent = likeData.liked
+              ? `Unlike (${likeData.likes})`
+              : `Like (${likeData.likes})`;
           });
+
+        likeButton.addEventListener("click", async () => {
+          const csrfToken = await getCsrfToken();
+          fetch(`/auth/like/${image.id}`, {
+            method: "POST",
+            headers: { "CSRF-Token": csrfToken },
+            credentials: "include",
+          })
+            .then(() => loadImages(currentPage))
+            .catch((error) =>
+              console.error("Erreur lors de la gestion du like :", error)
+            );
+        });
+
+        const commentForm = document.createElement("form");
+        const commentInput = document.createElement("input");
+        const commentButton = document.createElement("button");
+        const commentSection = document.createElement("div");
+
+        commentInput.placeholder = "Ajouter un commentaire...";
+        commentInput.className = "border p-2 w-full rounded mb-2";
+        commentButton.textContent = "Envoyer";
+        commentButton.type = "submit";
+        commentButton.className = "text-white bg-blue-500 rounded px-4 py-1";
+        commentForm.className = "mt-2";
+        commentForm.appendChild(commentInput);
+        commentForm.appendChild(commentButton);
+
+        commentForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const comment = commentInput.value;
+          if (comment) {
+            const csrfToken = await getCsrfToken();
+            fetch(`/auth/comment/${image.id}`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "CSRF-Token": csrfToken,
+              },
+              credentials: "include",
+              body: JSON.stringify({ comment }),
+            })
+              .then(() => {
+                commentInput.value = "";
+                loadComments(image.id, commentSection);
+              })
+              .catch((error) =>
+                console.error("Erreur lors de l'ajout du commentaire :", error)
+              );
+          }
+        });
+
+        imgContainer.appendChild(img);
+        imgContainer.appendChild(username);
+        imgContainer.appendChild(likeButton);
+        imgContainer.appendChild(commentForm);
+        imgContainer.appendChild(commentSection);
+        container.appendChild(imgContainer);
+
+        loadComments(image.id, commentSection);
       }
 
       function loadComments(imageId, commentSection) {
-        commentSection.innerHTML = ""; // Effacer les anciens commentaires
-        fetch(`/auth/comments/${imageId}`, {
-          credentials: "include", // Inclure les cookies
-        })
+        commentSection.innerHTML = "";
+        fetch(`/auth/comments/${imageId}`, { credentials: "include" })
           .then((response) => response.json())
           .then((comments) => {
             comments.forEach((comment) => {
-              const commentDiv = document.createElement("div");
-              commentDiv.textContent = `${escapeHTML(
-                comment.email
-              )} : ${escapeHTML(comment.comment)}`;
-              commentSection.appendChild(commentDiv); // Ajouter cette ligne
+              const commentDiv = document.createElement("p");
+              commentDiv.className = "text-gray-700 text-sm mb-1";
+              const username = comment.username
+                ? escapeHTML(comment.username)
+                : "Utilisateur inconnu";
+              commentDiv.textContent = `${username} : ${escapeHTML(
+                comment.comment
+              )}`;
+              commentSection.appendChild(commentDiv);
             });
           })
-          .catch((error) => {
+          .catch((error) =>
             console.error(
               "Erreur lors de la récupération des commentaires :",
               error
-            );
-          });
+            )
+          );
       }
 
-      // Gestion de la pagination
       document.getElementById("prev-page").addEventListener("click", () => {
         if (currentPage > 1) {
           currentPage--;
@@ -451,6 +304,5 @@
         loadImages(currentPage);
       });
     </script>
-    <script src="logout.js"></script>
   </body>
 </html>
