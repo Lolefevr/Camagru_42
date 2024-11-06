@@ -87,6 +87,16 @@ app.get("/test-db", (req, res) => {
   });
 });
 
+// Gérer les erreurs CSRF
+app.use((err, req, res, next) => {
+  if (err.code === "EBADCSRFTOKEN") {
+    // Le token CSRF est invalide ou manquant
+    res.status(403).send("Formulaire invalide ou expiré.");
+  } else {
+    next(err);
+  }
+});
+
 // Gestion globale des erreurs
 app.use((err, req, res, next) => {
   if (res.headersSent) {

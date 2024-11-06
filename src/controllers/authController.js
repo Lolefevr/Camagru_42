@@ -7,6 +7,11 @@ const fs = require("fs");
 const sharp = require("sharp");
 const transporter = require("../../config/emailConfig");
 
+// Fonction pour obtenir le token CSRF
+exports.getCsrfToken = (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+};
+
 // Fonction pour vérifier le token (utilisée par /verify-token)
 exports.verifyToken = (req, res) => {
   res.status(200).json({ valid: true });
@@ -607,6 +612,7 @@ exports.addComment = (req, res) => {
   const userId = req.userId; // Récupérer l'ID de l'utilisateur depuis le middleware
   const { comment } = req.body; // Récupérer le commentaire
   const imageId = req.params.imageId; // L'ID de l'image à commenter
+  console.log("Commentaire reçu :", comment);
 
   // Vérifier que le commentaire n'est pas vide
   if (!comment || comment.trim() === "") {
@@ -622,6 +628,47 @@ exports.addComment = (req, res) => {
         console.error(err);
         return res.status(500).send("Erreur lors de l'ajout du commentaire.");
       }
+      // Récupérer les informations de l'auteur de la photo et du commentateur
+      db.query(
+        "SELECT u.email AS ownerEmail, u.username AS ownerUsername, c.username AS commenterUsername FROM images i JOIN users u ON i.user_id = u.id JOIN users c ON c.id = ? WHERE i.id = ?",
+        [userId, imageId],
+        (err, results) => {
+          if (err) {
+            console.error(
+              "Erreur lors de la récupération des informations:",
+              err
+            );
+            return; // On ne bloque pas la réponse en cas d'erreur d'envoi d'email
+          }
+
+          if (results.length > 0) {
+            const { ownerEmail, commenterUsername } = results[0];
+
+            // Définir les options de l'email
+            const mailOptions = {
+              from: '"Camagru Support" illidan888@hotmail.fr',
+              to: ownerEmail,
+              subject: "Nouveau commentaire sur votre photo",
+              html: `
+			<p>Bonjour ${results[0].ownerUsername},</p>
+			<p>${commenterUsername} a commenté votre photo :</p>
+			<blockquote>${comment}</blockquote>
+			<p>Merci de consulter votre galerie pour voir ce commentaire !</p>
+		  `,
+            };
+
+            // Envoyer l'email
+            transporter.sendMail(mailOptions, (error, info) => {
+              if (error) {
+                console.error("Erreur lors de l'envoi de l'email:", error);
+              } else {
+                console.log("Email envoyé avec succès:", info.response);
+              }
+            });
+          }
+        }
+      );
+
       res.status(201).send({ message: "Commentaire ajouté avec succès." });
     }
   );

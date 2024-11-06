@@ -199,6 +199,25 @@
     </footer>
 
     <script>
+      // Fonction pour obtenir le token CSRF
+      function getCsrfToken() {
+        return fetch("/auth/csrf-token", {
+          credentials: "include", // Inclure les cookies dans la requête
+        })
+          .then((res) => res.json())
+          .then((data) => data.csrfToken);
+      }
+
+      // Fonction pour échapper les caractères spéciaux
+      function escapeHTML(str) {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
       // Marquer le lien actif
       const currentUrl = window.location.pathname;
       if (currentUrl === "/gallery") {
@@ -213,11 +232,13 @@
       const imagesPerPage = 5; // Limite d'images par page
 
       // Vérification du token au chargement
-      window.addEventListener("load", function () {
+      window.addEventListener("load", async function () {
+        const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
         fetch("/auth/verify-token", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "CSRF-Token": csrfToken, // Inclure le token CSRF
           },
           credentials: "include", // Inclure les cookies
         })
@@ -235,22 +256,28 @@
       });
 
       // Fonction de déconnexion
-      document.querySelector(".logout-btn").addEventListener("click", () => {
-        fetch("/auth/logout", {
-          method: "POST",
-          credentials: "include", // Inclure les cookies
-        })
-          .then((response) => {
-            if (response.ok) {
-              window.location.href = "/"; // Rediriger vers la page d'accueil
-            } else {
-              throw new Error("Erreur lors de la déconnexion");
-            }
+      document
+        .querySelector(".logout-btn")
+        .addEventListener("click", async () => {
+          const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
+          fetch("/auth/logout", {
+            method: "POST",
+            headers: {
+              "CSRF-Token": csrfToken, // Inclure le token CSRF
+            },
+            credentials: "include", // Inclure les cookies
           })
-          .catch((error) => {
-            console.error("Erreur lors de la déconnexion :", error);
-          });
-      });
+            .then((response) => {
+              if (response.ok) {
+                window.location.href = "/"; // Rediriger vers la page d'accueil
+              } else {
+                throw new Error("Erreur lors de la déconnexion");
+              }
+            })
+            .catch((error) => {
+              console.error("Erreur lors de la déconnexion :", error);
+            });
+        });
 
       // Récupérer les images et afficher la galerie avec pagination
       function loadImages(page) {
@@ -277,8 +304,8 @@
                 const email = document.createElement("div");
                 email.classList.add("username");
                 email.textContent = `Par : ${
-                  image.email ? image.email : "Inconnu"
-                }`; // Afficher l'email
+                  image.email ? escapeHTML(image.email) : "Inconnu"
+                }`;
 
                 const likeButton = document.createElement("button");
                 const commentForm = document.createElement("form");
@@ -293,14 +320,18 @@
                   .then((response) => response.json())
                   .then((likeData) => {
                     likeButton.textContent = likeData.liked
-                      ? `Unlike (${image.likes})`
-                      : `Like (${image.likes})`;
+                      ? `Unlike (${escapeHTML(String(likeData.likes))})`
+                      : `Like (${escapeHTML(String(likeData.likes))})`;
                   });
 
                 // Gestion des likes (ajouter ou retirer un like)
-                likeButton.addEventListener("click", () => {
+                likeButton.addEventListener("click", async () => {
+                  const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
                   fetch(`/auth/like/${image.id}`, {
                     method: "POST",
+                    headers: {
+                      "CSRF-Token": csrfToken, // Inclure le token CSRF
+                    },
                     credentials: "include", // Inclure les cookies
                   })
                     .then((response) => response.json())
@@ -315,6 +346,12 @@
                             ? `Unlike (${likeData.likes})`
                             : `Like (${likeData.likes})`;
                         });
+                    })
+                    .catch((error) => {
+                      console.error(
+                        "Erreur lors de la gestion du like :",
+                        error
+                      );
                     });
                 });
 
@@ -326,14 +363,16 @@
                 commentForm.appendChild(commentButton);
 
                 // Gestion des commentaires : soumettre un commentaire
-                commentForm.addEventListener("submit", (e) => {
+                commentForm.addEventListener("submit", async (e) => {
                   e.preventDefault();
                   const comment = commentInput.value;
                   if (comment) {
+                    const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
                     fetch(`/auth/comment/${image.id}`, {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
+                        "CSRF-Token": csrfToken, // Inclure le token CSRF
                       },
                       credentials: "include", // Inclure les cookies
                       body: JSON.stringify({ comment }),
@@ -342,6 +381,12 @@
                       .then((data) => {
                         commentInput.value = ""; // Réinitialiser le champ de commentaire
                         loadComments(image.id, commentSection); // Recharger les commentaires après ajout
+                      })
+                      .catch((error) => {
+                        console.error(
+                          "Erreur lors de l'ajout du commentaire :",
+                          error
+                        );
                       });
                   }
                 });
@@ -370,7 +415,6 @@
           });
       }
 
-      // Fonction pour charger les commentaires d'une image
       function loadComments(imageId, commentSection) {
         commentSection.innerHTML = ""; // Effacer les anciens commentaires
         fetch(`/auth/comments/${imageId}`, {
@@ -380,8 +424,10 @@
           .then((comments) => {
             comments.forEach((comment) => {
               const commentDiv = document.createElement("div");
-              commentDiv.textContent = `${comment.email} : ${comment.comment}`;
-              commentSection.appendChild(commentDiv);
+              commentDiv.textContent = `${escapeHTML(
+                comment.email
+              )} : ${escapeHTML(comment.comment)}`;
+              commentSection.appendChild(commentDiv); // Ajouter cette ligne
             });
           })
           .catch((error) => {

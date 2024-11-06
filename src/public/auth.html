@@ -106,6 +106,15 @@
     </div>
 
     <script>
+
+      // Fonction pour obtenir le token CSRF
+      function getCsrfToken() {
+        return fetch("/auth/csrf-token", {
+          credentials: "include", // Inclure les cookies dans la requête
+        })
+          .then((res) => res.json())
+          .then((data) => data.csrfToken);
+
       // Fonction de validation de mot de passe sécurisé
       function validatePassword(password) {
         const minLength = 12;
@@ -148,14 +157,17 @@
           };
         }
         return { isValid: true, message: "" };
+
       }
 
       // Vérifier si l'utilisateur est déjà authentifié
-      window.addEventListener("load", function () {
+      window.addEventListener("load", async function () {
+        const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
         fetch("/auth/verify-token", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "CSRF-Token": csrfToken, // Inclure le token CSRF
           },
           credentials: "include", // Inclure les cookies
         })
@@ -175,14 +187,14 @@
           });
       });
 
-      // Inscription
       document
         .getElementById("registerForm")
-        .addEventListener("submit", function (e) {
+        .addEventListener("submit", async function (e) {
           e.preventDefault();
           const email = document.getElementById("registerEmail").value;
           const username = document.getElementById("registerUsername").value;
           const password = document.getElementById("registerPassword").value;
+          const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
 
           // Validation du mot de passe
           const passwordValidation = validatePassword(password);
@@ -191,10 +203,12 @@
             return;
           }
 
+
           fetch("/auth/register", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "CSRF-Token": csrfToken, // Inclure le token CSRF
             },
             body: JSON.stringify({ email, username, password }),
             credentials: "include", // Inclure les cookies
@@ -219,15 +233,18 @@
       // Connexion
       document
         .getElementById("loginForm")
-        .addEventListener("submit", function (e) {
+        .addEventListener("submit", async function (e) {
           e.preventDefault();
           const email = document.getElementById("loginEmail").value;
           const password = document.getElementById("loginPassword").value;
+
+          const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
 
           fetch("/auth/login", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "CSRF-Token": csrfToken, // Inclure le token CSRF
             },
             body: JSON.stringify({ email, password }),
             credentials: "include", // Inclure les cookies

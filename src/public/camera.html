@@ -245,6 +245,24 @@
       let capturedImage = null;
       let uploadedImage = null;
 
+      // Fonction pour obtenir le token CSRF
+      function getCsrfToken() {
+        return fetch("/auth/csrf-token", {
+          credentials: "include", // Inclure les cookies dans la requête
+        })
+          .then((res) => res.json())
+          .then((data) => data.csrfToken);
+      }
+      // Fonction pour échapper les caractères spéciaux
+      function escapeHTML(str) {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
       // Sidebar toggle functionality
       toggleSidebarButton.addEventListener("click", () => {
         if (sidebar.style.transform === "translateX(0%)") {
@@ -351,18 +369,19 @@
       });
 
       // Sauvegarder l'image
-      saveButton.addEventListener("click", () => {
+      saveButton.addEventListener("click", async () => {
         // Vérifier qu'une image existe (soit capturée par webcam, soit uploadée)
         if (!capturedImage && !uploadedImage) return;
 
-        const token = localStorage.getItem("token");
         const imageData = canvas.toDataURL("image/png");
+
+        const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
 
         fetch("/auth/upload", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            "CSRF-Token": csrfToken, // Inclure le token CSRF
           },
           credentials: "include", // Inclure les cookies
           body: JSON.stringify({ image: imageData }),
@@ -389,7 +408,7 @@
             data.forEach((image) => {
               const imgContainer = document.createElement("div");
               const img = document.createElement("img");
-              img.src = image.image_path;
+              img.src = escapeHTML(image.image_path);
               img.width = 200;
 
               const deleteButton = document.createElement("button");
@@ -432,7 +451,7 @@
       // Exporter l'image en PNG
       function exportImage(imagePath) {
         const a = document.createElement("a");
-        a.href = imagePath;
+        a.href = escapeHTML(imagePath);
         a.download = "image.png";
         document.body.appendChild(a);
         a.click();
@@ -442,7 +461,7 @@
       // Modifier une image (charger dans le canvas)
       function editImage(imagePath) {
         const img = new Image();
-        img.src = imagePath;
+        img.src = escapeHTML(imagePath);
         img.onload = () => {
           context.clearRect(0, 0, canvas.width, canvas.height); // Effacer le canvas actuel
           context.drawImage(img, 0, 0, canvas.width, canvas.height); // Dessiner l'image sur le canvas
@@ -457,9 +476,14 @@
       }
 
       // Supprimer une image
-      function deleteImage(imageId) {
+      async function deleteImage(imageId) {
+        const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
+
         fetch(`/auth/delete-image/${imageId}`, {
           method: "DELETE",
+          headers: {
+            "CSRF-Token": csrfToken, // Inclure le token CSRF
+          },
           credentials: "include", // Inclure les cookies
         })
           .then((response) => response.json())
@@ -471,6 +495,56 @@
             console.error("Erreur lors de la suppression de l'image :", error);
           });
       }
+
+      // Fonction de déconnexion
+      document
+        .querySelector(".logout-btn")
+        .addEventListener("click", async () => {
+          const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
+
+          fetch("/auth/logout", {
+            method: "POST",
+            headers: {
+              "CSRF-Token": csrfToken, // Inclure le token CSRF
+            },
+            credentials: "include", // Inclure les cookies
+          })
+            .then((response) => {
+              if (response.ok) {
+                window.location.href = "/"; // Rediriger vers la page d'accueil
+              } else {
+                throw new Error("Erreur lors de la déconnexion");
+              }
+            })
+            .catch((error) => {
+              console.error("Erreur lors de la déconnexion :", error);
+            });
+        });
+
+      // Vérification du token au chargement
+      window.addEventListener("load", async function () {
+        const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
+
+        fetch("/auth/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "CSRF-Token": csrfToken, // Inclure le token CSRF
+          },
+          credentials: "include", // Inclure les cookies
+        })
+          .then((response) => {
+            if (!response.ok) {
+              window.location.href = "/"; // Rediriger vers la page de connexion si non authentifié
+            }
+          })
+          .catch((err) => {
+            console.error("Erreur lors de la vérification du token :", err);
+            window.location.href = "/"; // Rediriger en cas d'erreur
+          });
+
+        loadUserImages(); // Charger les images de l'utilisateur après la vérification
+      });
 
       window.onload = loadUserImages;
     </script>
