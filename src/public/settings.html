@@ -5,276 +5,220 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Camagru - Settings</title>
-    <style>
-      body {
-        display: grid;
-        grid-template-areas:
-          "header"
-          "main"
-          "footer";
-        grid-template-rows: auto 1fr auto;
-        height: 100vh;
-        margin: 0;
-      }
-      header {
-        grid-area: header;
-        background-color: #333;
-        color: white;
-        padding: 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .nav-links {
-        display: flex;
-        gap: 20px;
-      }
-      .nav-links a {
-        color: white;
-        text-decoration: none;
-        font-size: 1.2rem;
-        padding: 10px 15px;
-        background-color: transparent;
-        border: none;
-        cursor: pointer;
-      }
-      .nav-links a.active {
-        background-color: #555;
-        border-radius: 5px;
-      }
-      .logout-btn {
-        background-color: red;
-        color: white;
-        padding: 10px 20px;
-        border: none;
-        cursor: pointer;
-        border-radius: 5px;
-      }
-      footer {
-        grid-area: footer;
-        background-color: #333;
-        color: white;
-        text-align: center;
-        padding: 1rem;
-      }
-      main {
-        grid-area: main;
-        padding: 1rem;
-        background-color: #f4f4f4;
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        flex-direction: column;
-      }
-      .user-info {
-        background-color: white;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
-        max-width: 400px;
-        width: 100%;
-      }
-      .user-info h3 {
-        font-size: 1.3rem;
-        margin-bottom: 5px;
-      }
-      .user-info p {
-        margin: 0;
-        font-size: 1rem;
-        color: #555;
-      }
-      .section {
-        background-color: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        max-width: 400px;
-        width: 100%;
-        margin-bottom: 30px;
-      }
-      .section h3 {
-        font-size: 1.5rem;
-        margin-bottom: 10px;
-        font-weight: bold;
-        border-bottom: 2px solid #ddd;
-        padding-bottom: 10px;
-      }
-      label {
-        margin-bottom: 5px;
-        font-weight: bold;
-      }
-      input {
-        padding: 10px;
-        margin-bottom: 15px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 1rem;
-        width: 100%;
-      }
-      button {
-        background-color: #333;
-        color: white;
-        border: none;
-        padding: 10px;
-        cursor: pointer;
-        border-radius: 5px;
-        font-size: 1rem;
-      }
-      button:hover {
-        background-color: #555;
-      }
-      @media (max-width: 600px) {
-        header {
-          flex-direction: column;
-          gap: 10px;
-        }
-        .nav-links {
-          flex-direction: column;
-        }
-      }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body>
-    <header>
-      <div class="nav-links">
-        <a href="/gallery" id="gallery-link">Gallery</a>
-        <a href="/camera" id="dashboard-link">Dashboard</a>
-        <a href="/settings" id="settings-link" class="active">Settings</a>
-      </div>
-      <button class="logout-btn">Déconnexion</button>
+  <body class="flex flex-col min-h-screen bg-gray-100">
+    <!-- Header -->
+    <header
+      class="bg-gray-800 text-white p-4 flex justify-between items-center"
+    >
+      <nav class="flex space-x-4">
+        <a href="/gallery" class="hover:text-gray-300">Gallery</a>
+        <a href="/camera" class="hover:text-gray-300">Dashboard</a>
+        <a href="/settings" class="text-gray-300 font-semibold">Settings</a>
+      </nav>
+      <button
+        class="logout-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+      >
+        Déconnexion
+      </button>
     </header>
 
-    <main>
-      <section class="section">
-        <h3>Préférences de notification</h3>
+    <!-- Main content -->
+    <main
+      class="flex-1 p-6 grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+    >
+      <!-- Préférences de notification avec switch -->
+      <section class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-4 border-b pb-2">
+          Préférences de notification
+        </h3>
         <form id="notificationPreferenceForm">
-          <label>
-            <input
-              type="radio"
-              name="receiveEmailNotifications"
-              value="1"
-              checked
-            />
-            Recevoir des notifications par email pour les nouveaux commentaires
-          </label>
-          <br />
-          <label>
-            <input type="radio" name="receiveEmailNotifications" value="0" />
-            Ne pas recevoir de notifications
-          </label>
-          <button type="submit">Enregistrer les préférences</button>
+          <div class="flex items-center justify-between">
+            <span
+              >Recevoir des notifications par email pour les nouveaux
+              commentaires</span
+            >
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                class="sr-only peer"
+                id="notificationSwitch"
+              />
+              <div
+                class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500"
+              ></div>
+              <div
+                class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-all peer-checked:translate-x-full"
+              ></div>
+            </label>
+          </div>
+          <button
+            type="submit"
+            class="mt-4 w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-600"
+          >
+            Enregistrer les préférences
+          </button>
         </form>
       </section>
+
       <!-- Section Mot de passe oublié -->
-      <section class="section">
-        <h3>Mot de passe oublié ?</h3>
-        <button id="forgot-password-btn">Réinitialiser le mot de passe</button>
-      </section>
-
-      <!-- Dialogue de demande d'email pour réinitialisation -->
-      <div id="forgot-password-dialog" style="display: none">
-        <h3>Réinitialiser votre mot de passe</h3>
-        <label for="forgot-email">Entrez votre adresse email :</label>
-        <input
-          type="email"
-          id="forgot-email"
-          placeholder="Votre adresse email"
-        />
-        <button id="send-reset-link">
-          Envoyer le lien de réinitialisation
+      <section class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-4 border-b pb-2">
+          Mot de passe oublié ?
+        </h3>
+        <button
+          id="forgot-password-btn"
+          class="w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-600"
+        >
+          Réinitialiser le mot de passe
         </button>
-      </div>
-
-      <!-- Informations utilisateur affichées en haut -->
-      <div class="user-info">
-        <h3>Informations de l'utilisateur</h3>
-        <p>Email : <span id="user-email">Chargement...</span></p>
-        <p>Nom d'utilisateur : <span id="user-username">Chargement..</span></p>
-      </div>
-
-      <!-- Section Modifier son email / pseudo -->
-      <section class="section">
-        <h3>Modifier son email / pseudo</h3>
-        <form id="updateProfileForm">
-          <label for="username">Nom d'utilisateur :</label>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            placeholder="Entrer un nouveau nom d'utilisateur"
-          />
-          <label for="email">Email :</label>
+        <div id="forgot-password-dialog" class="hidden mt-4">
+          <label for="forgot-email" class="block font-semibold"
+            >Entrez votre adresse email :</label
+          >
           <input
             type="email"
-            id="email"
-            name="email"
-            placeholder="Entrer une nouvelle adresse email"
+            id="forgot-email"
+            placeholder="Votre adresse email"
+            class="w-full px-3 py-2 border rounded mt-2"
           />
-          <button type="submit">Mettre à jour le profil</button>
+          <button
+            id="send-reset-link"
+            class="mt-2 w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-600"
+          >
+            Envoyer le lien de réinitialisation
+          </button>
+        </div>
+      </section>
+
+      <!-- Informations utilisateur -->
+      <section class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-4 border-b pb-2">
+          Informations de l'utilisateur
+        </h3>
+        <p>
+          Email :
+          <span id="user-email" class="text-gray-700">Chargement...</span>
+        </p>
+        <p>
+          Nom d'utilisateur :
+          <span id="user-username" class="text-gray-700">Chargement..</span>
+        </p>
+      </section>
+
+      <!-- Section Modifier son email / pseudo -->
+      <section class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-4 border-b pb-2">
+          Modifier son email / pseudo
+        </h3>
+        <form id="updateProfileForm" class="space-y-4">
+          <div>
+            <label for="username" class="block font-semibold"
+              >Nom d'utilisateur :</label
+            >
+            <input
+              type="text"
+              id="username"
+              name="username"
+              class="w-full px-3 py-2 border rounded"
+              placeholder="Nouveau nom d'utilisateur"
+            />
+          </div>
+          <div>
+            <label for="email" class="block font-semibold">Email :</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              class="w-full px-3 py-2 border rounded"
+              placeholder="Nouvelle adresse email"
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-600"
+          >
+            Mettre à jour le profil
+          </button>
         </form>
       </section>
 
       <!-- Section Modifier son mot de passe -->
-      <section class="section">
-        <h3>Modifier son mot de passe</h3>
-        <form id="updatePasswordForm">
-          <!-- Hidden field for the username for accessibility and password managers -->
-          <input
-            type="text"
-            id="username_hidden_password"
-            name="username"
-            autocomplete="username"
-            value="NomUtilisateur"
-            style="position: absolute; left: -9999px; width: 1px; height: 1px"
-            aria-hidden="true"
-            tabindex="-1"
-          />
-          <!-- Rest of your form fields -->
-          <label for="current-password">Mot de passe actuel :</label>
-          <input
-            type="password"
-            id="current-password"
-            name="current-password"
-            placeholder="Entrer le mot de passe actuel"
-            required
-            autocomplete="current-password"
-          />
-          <!-- Additional form fields -->
-
-          <label for="new-password">Nouveau mot de passe :</label>
-          <input
-            type="password"
-            id="new-password"
-            name="new-password"
-            placeholder="Entrer un nouveau mot de passe"
-            required
-            autocomplete="new-password"
-          />
-
-          <label for="confirm-new-password"
-            >Confirmer le nouveau mot de passe :</label
+      <section class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-4 border-b pb-2">
+          Modifier son mot de passe
+        </h3>
+        <form id="updatePasswordForm" class="space-y-4">
+          <div>
+            <label for="current-password" class="block font-semibold"
+              >Mot de passe actuel :</label
+            >
+            <input
+              type="password"
+              id="current-password"
+              name="current-password"
+              class="w-full px-3 py-2 border rounded"
+              placeholder="Mot de passe actuel"
+            />
+          </div>
+          <div>
+            <label for="new-password" class="block font-semibold"
+              >Nouveau mot de passe :</label
+            >
+            <input
+              type="password"
+              id="new-password"
+              name="new-password"
+              class="w-full px-3 py-2 border rounded"
+              placeholder="Nouveau mot de passe"
+            />
+          </div>
+          <div>
+            <label for="confirm-new-password" class="block font-semibold"
+              >Confirmer le nouveau mot de passe :</label
+            >
+            <input
+              type="password"
+              id="confirm-new-password"
+              name="confirm-new-password"
+              class="w-full px-3 py-2 border rounded"
+              placeholder="Confirmer le mot de passe"
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-600"
           >
-          <input
-            type="password"
-            id="confirm-new-password"
-            name="confirm-new-password"
-            placeholder="Confirmer le nouveau mot de passe"
-            required
-            autocomplete="new-password"
-          />
-
-          <button type="submit">Mettre à jour le mot de passe</button>
+            Mettre à jour le mot de passe
+          </button>
         </form>
       </section>
     </main>
 
-    <footer>
+    <footer class="bg-gray-800 text-white text-center p-4">
       <p>Camagru © 2024</p>
     </footer>
 
     <script>
-      // Fonction pour échapper les caractères spéciaux
+      async function getCsrfToken() {
+        try {
+          const response = await fetch("/auth/csrf-token", {
+            credentials: "include",
+          });
+          if (!response.ok)
+            throw new Error("Échec de l'obtention du token CSRF");
+          const data = await response.json();
+          return data.csrfToken;
+        } catch (error) {
+          console.error("Erreur lors de la récupération du token CSRF:", error);
+          alert(
+            "Erreur lors de la récupération du token CSRF. Veuillez réessayer plus tard."
+          );
+          throw error;
+        }
+      }
+
       function escapeHTML(str) {
         return str
           .replace(/&/g, "&amp;")
@@ -284,7 +228,137 @@
           .replace(/'/g, "&#039;");
       }
 
-      // Charger les informations utilisateur au chargement de la page
+      async function handlePostRequest(url, body) {
+        const csrfToken = await getCsrfToken();
+        const token = localStorage.getItem("token");
+        return fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            "CSRF-Token": csrfToken,
+          },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+      }
+
+      document
+        .getElementById("notificationPreferenceForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const receiveEmailNotifications = document.getElementById(
+            "notificationSwitch"
+          ).checked
+            ? "1"
+            : "0";
+          try {
+            const response = await handlePostRequest(
+              "/auth/update-notification-preference",
+              { receiveEmailNotifications }
+            );
+            const data = await response.json();
+            alert(
+              data.success
+                ? "Préférences de notification mises à jour avec succès."
+                : `Erreur: ${data.message}`
+            );
+          } catch (error) {
+            console.error("Erreur:", error);
+          }
+        });
+
+      document
+        .getElementById("updateProfileForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const username = document.getElementById("username").value;
+          const email = document.getElementById("email").value;
+
+          try {
+            const response = await handlePostRequest("/auth/update-profile", {
+              username,
+              email,
+            });
+            const data = await response.json();
+            alert(
+              data.success
+                ? "Profil mis à jour avec succès."
+                : `Erreur: ${data.message}`
+            );
+            if (data.success) {
+              loadUserInfo(); // Rafraîchir les informations de l'utilisateur sans recharger la page
+            }
+          } catch (error) {
+            console.error("Erreur:", error);
+          }
+        });
+
+      document
+        .getElementById("updatePasswordForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const currentPassword =
+            document.getElementById("current-password").value;
+          const newPassword = document.getElementById("new-password").value;
+          const confirmNewPassword = document.getElementById(
+            "confirm-new-password"
+          ).value;
+
+          if (newPassword !== confirmNewPassword) {
+            alert("Les nouveaux mots de passe ne correspondent pas.");
+            return;
+          }
+
+          try {
+            const response = await handlePostRequest("/auth/update-password", {
+              currentPassword,
+              newPassword,
+            });
+            const data = await response.json();
+            alert(
+              data.success
+                ? "Mot de passe mis à jour avec succès."
+                : `Erreur: ${data.message}`
+            );
+          } catch (error) {
+            console.error("Erreur:", error);
+          }
+        });
+
+      document
+        .getElementById("forgot-password-btn")
+        .addEventListener("click", () => {
+          document
+            .getElementById("forgot-password-dialog")
+            .classList.toggle("hidden");
+        });
+
+      document
+        .getElementById("send-reset-link")
+        .addEventListener("click", async () => {
+          const email = document.getElementById("forgot-email").value;
+          try {
+            const response = await handlePostRequest("/auth/forgot-password", {
+              email,
+            });
+            const data = await response.json();
+            alert(
+              data.success
+                ? "Un lien de réinitialisation a été envoyé à votre email."
+                : `Erreur: ${data.message}`
+            );
+            if (data.success)
+              document
+                .getElementById("forgot-password-dialog")
+                .classList.add("hidden");
+          } catch (error) {
+            console.error("Erreur:", error);
+          }
+        });
+
+      window.addEventListener("load", loadUserInfo);
+
       function loadUserInfo() {
         fetch("/auth/user-info", {
           method: "GET",
@@ -294,12 +368,7 @@
           },
           credentials: "include",
         })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("Erreur HTTP: " + response.status);
-            }
-            return response.json();
-          })
+          .then((response) => response.json())
           .then((data) => {
             if (data.success && data.user) {
               document.getElementById("user-email").textContent = escapeHTML(
@@ -308,205 +377,12 @@
               document.getElementById("user-username").textContent = escapeHTML(
                 data.user.username
               );
-            } else {
-              console.error(
-                "Erreur lors de la récupération des informations utilisateur :",
-                data.message
-              );
             }
           })
-          .catch((error) => {
-            console.error("Erreur lors de la requête utilisateur :", error);
-          });
+          .catch((error) =>
+            console.error("Erreur lors de la requête utilisateur :", error)
+          );
       }
-
-      // Charger les informations utilisateur au chargement de la page
-      window.addEventListener("load", loadUserInfo);
-
-      // Soumission du formulaire de modification du profil
-      document
-        .getElementById("updateProfileForm")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
-          const username = document.getElementById("username").value;
-          const email = document.getElementById("email").value;
-          const token = localStorage.getItem("token");
-
-          fetch("/auth/update-profile", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            credentials: "include",
-            body: JSON.stringify({ username, email }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.success) {
-                alert("Profil mis à jour avec succès.");
-                // Recharger les informations de l'utilisateur
-                loadUserInfo(); // Appel d'une fonction pour recharger dynamiquement
-              } else {
-                alert(`Erreur: ${escapeHTML(data.message)}`);
-              }
-            })
-            .catch((error) => console.error("Erreur:", error));
-        });
-      // Soumission du formulaire de modification du mot de passe
-      // Fonction de validation de mot de passe
-      function validatePassword(password) {
-        const minLength = 12;
-        const upperCaseRegex = /[A-Z]/;
-        const lowerCaseRegex = /[a-z]/;
-        const numberRegex = /[0-9]/;
-        const specialCharRegex = /[!@#$%^&*(),.?":{}|<>]/;
-
-        if (password.length < minLength) {
-          return {
-            isValid: false,
-            message: `Le mot de passe doit contenir au moins ${minLength} caractères.`,
-          };
-        }
-        if (!upperCaseRegex.test(password)) {
-          return {
-            isValid: false,
-            message:
-              "Le mot de passe doit contenir au moins une lettre majuscule.",
-          };
-        }
-        if (!lowerCaseRegex.test(password)) {
-          return {
-            isValid: false,
-            message:
-              "Le mot de passe doit contenir au moins une lettre minuscule.",
-          };
-        }
-        if (!numberRegex.test(password)) {
-          return {
-            isValid: false,
-            message: "Le mot de passe doit contenir au moins un chiffre.",
-          };
-        }
-        if (!specialCharRegex.test(password)) {
-          return {
-            isValid: false,
-            message:
-              "Le mot de passe doit contenir au moins un caractère spécial.",
-          };
-        }
-
-        return { isValid: true, message: "" };
-      }
-
-      // Soumission du formulaire de modification du mot de passe
-      document
-        .getElementById("updatePasswordForm")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
-          const currentPassword =
-            document.getElementById("current-password").value;
-          const newPassword = document.getElementById("new-password").value;
-          const confirmNewPassword = document.getElementById(
-            "confirm-new-password"
-          ).value;
-
-          // Vérifie si le nouveau mot de passe est conforme aux critères de sécurité
-          const passwordValidation = validatePassword(newPassword);
-          if (!passwordValidation.isValid) {
-            alert(passwordValidation.message);
-            return; // Arrête la soumission si le mot de passe est invalide
-          }
-
-          if (newPassword !== confirmNewPassword) {
-            alert("Les nouveaux mots de passe ne correspondent pas.");
-            return;
-          }
-
-          const token = localStorage.getItem("token");
-          fetch("/auth/update-password", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            credentials: "include",
-            body: JSON.stringify({ currentPassword, newPassword }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              alert(
-                data.success
-                  ? "Mot de passe mis à jour avec succès."
-                  : `Erreur: ${data.message}`
-              );
-            })
-            .catch((error) => console.error("Erreur:", error));
-        });
-      // Ouvrir la boîte de dialogue de mot de passe oublié
-      document
-        .getElementById("forgot-password-btn")
-        .addEventListener("click", () => {
-          document.getElementById("forgot-password-dialog").style.display =
-            "block";
-        });
-
-      // Envoyer l'email de réinitialisation de mot de passe
-      document
-        .getElementById("send-reset-link")
-        .addEventListener("click", () => {
-          const email = document.getElementById("forgot-email").value;
-
-          fetch("/auth/forgot-password", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.success) {
-                alert(
-                  "Un lien de réinitialisation a été envoyé à votre email."
-                );
-                document.getElementById(
-                  "forgot-password-dialog"
-                ).style.display = "none";
-              } else {
-                alert(`Erreur: ${escapeHTML(data.message)}`);
-              }
-            })
-            .catch((error) => console.error("Erreur:", error));
-        });
-
-      // Soumission du formulaire de préférence de notification
-      document
-        .getElementById("notificationPreferenceForm")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
-          const receiveEmailNotifications = document.querySelector(
-            'input[name="receiveEmailNotifications"]:checked'
-          ).value;
-
-          const token = localStorage.getItem("token");
-          fetch("/auth/update-notification-preference", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            credentials: "include",
-            body: JSON.stringify({ receiveEmailNotifications }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              alert(
-                data.success
-                  ? "Préférences de notification mises à jour avec succès."
-                  : `Erreur: ${data.message}`
-              );
-            })
-            .catch((error) => console.error("Erreur:", error));
-        });
     </script>
     <script src="logout.js"></script>
   </body>

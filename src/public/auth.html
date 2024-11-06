@@ -106,14 +106,28 @@
     </div>
 
     <script>
-
-      // Fonction pour obtenir le token CSRF
       function getCsrfToken() {
         return fetch("/auth/csrf-token", {
           credentials: "include", // Inclure les cookies dans la requête
         })
-          .then((res) => res.json())
-          .then((data) => data.csrfToken);
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("Échec de l'obtention du token CSRF");
+            }
+            return res.json();
+          })
+          .then((data) => data.csrfToken)
+          .catch((error) => {
+            console.error(
+              "Erreur lors de la récupération du token CSRF:",
+              error
+            );
+            alert(
+              "Erreur lors de la récupération du token CSRF. Veuillez réessayer plus tard."
+            );
+            throw error; // Propager l'erreur pour qu'elle puisse être gérée ailleurs si nécessaire
+          });
+      }
 
       // Fonction de validation de mot de passe sécurisé
       function validatePassword(password) {
@@ -157,34 +171,40 @@
           };
         }
         return { isValid: true, message: "" };
-
       }
 
       // Vérifier si l'utilisateur est déjà authentifié
       window.addEventListener("load", async function () {
-        const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
-        fetch("/auth/verify-token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "CSRF-Token": csrfToken, // Inclure le token CSRF
-          },
-          credentials: "include", // Inclure les cookies
-        })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("Utilisateur non authentifié.");
-            }
-            return response.json();
+        try {
+          const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
+          fetch("/auth/verify-token", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "CSRF-Token": csrfToken, // Inclure le token CSRF
+            },
+            credentials: "include", // Inclure les cookies
           })
-          .then((data) => {
-            if (data.valid) {
-              window.location.href = "/camera";
-            }
-          })
-          .catch((err) => {
-            console.error("Erreur lors de la vérification du token", err);
-          });
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Utilisateur non authentifié.");
+              }
+              return response.json();
+            })
+            .then((data) => {
+              if (data.valid) {
+                window.location.href = "/camera";
+              }
+            })
+            .catch((err) => {
+              console.error("Erreur lors de la vérification du token", err);
+            });
+        } catch (error) {
+          console.error(
+            "Erreur dans l'événement de chargement de la fenêtre:",
+            error
+          );
+        }
       });
 
       document
@@ -202,7 +222,6 @@
             alert(passwordValidation.message);
             return;
           }
-
 
           fetch("/auth/register", {
             method: "POST",

@@ -89,7 +89,7 @@ router.post(
   authController.updatePassword
 );
 // Route pour la réinitialisation de mot de passe (mot de passe oublié)
-//router.post("/forgot-password", authController.forgotPassword);
+router.post("/forgot-password", csrfProtection, authController.forgotPassword);
 
 router.get("/reset-password", (req, res) => {
   const filePath = path.join(__dirname, "../public/reset-password.html");
