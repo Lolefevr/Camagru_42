@@ -5,228 +5,163 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Camagru - Dashboard & Capture</title>
-    <style>
-      body {
-        display: grid;
-        grid-template-areas:
-          "header header"
-          "main side"
-          "footer footer";
-        grid-template-columns: 1fr 300px;
-        grid-template-rows: auto 1fr auto;
-        height: 100vh;
-        margin: 0;
-      }
-      header {
-        grid-area: header;
-        background-color: #333;
-        color: white;
-        padding: 1rem;
-        text-align: center;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .nav-links {
-        display: flex;
-        gap: 20px;
-      }
-      .nav-links a {
-        color: white;
-        text-decoration: none;
-        font-size: 1.2rem;
-        padding: 10px 15px;
-        background-color: transparent;
-        border: none;
-        cursor: pointer;
-      }
-      .nav-links a.active {
-        background-color: #555;
-        border-radius: 5px;
-      }
-      footer {
-        grid-area: footer;
-        background-color: #333;
-        color: white;
-        text-align: center;
-        padding: 1rem;
-      }
-      main {
-        grid-area: main;
-        padding: 1rem;
-        background-color: #f4f4f4;
-      }
-      aside {
-        grid-area: side;
-        background-color: #f9f9f9;
-        padding: 1rem;
-        border-left: 1px solid #ddd;
-        overflow-y: auto;
-        transition: transform 0.3s ease-in-out;
-      }
-      img {
-        max-width: 100%;
-        height: auto;
-        margin-bottom: 10px;
-        display: block;
-      }
-      .delete-btn {
-        background-color: red;
-        color: white;
-        border: none;
-        padding: 5px 10px;
-        cursor: pointer;
-        margin-bottom: 20px;
-      }
-      #canvas {
-        border: 2px solid black;
-      }
-      #controls {
-        margin-top: 10px;
-      }
-      button:disabled {
-        background-color: #cccccc;
-        cursor: not-allowed;
-      }
-      .logout-btn {
-        background-color: red;
-        color: white;
-        padding: 10px 20px;
-        border: none;
-        cursor: pointer;
-        border-radius: 5px;
-      }
-
-      /* Sidebar toggle button */
-      .sidebar-toggle-btn {
-        display: none;
-        background-color: #333;
-        color: white;
-        border: none;
-        padding: 10px;
-        font-size: 1.2rem;
-        cursor: pointer;
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        z-index: 1000;
-      }
-
-      /* Sidebar responsive styles */
-      @media (max-width: 768px) {
-        body {
-          grid-template-areas:
-            "header"
-            "main"
-            "footer";
-          grid-template-columns: 1fr;
-          grid-template-rows: auto 1fr auto;
-        }
-        aside {
-          position: fixed;
-          top: 0;
-          right: 0;
-          height: 100%;
-          width: 300px;
-          transform: translateX(100%);
-          background-color: #f9f9f9;
-          box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
-        }
-        main {
-          padding: 10px;
-        }
-        header {
-          flex-direction: column;
-          gap: 10px;
-        }
-        .nav-links {
-          flex-direction: column;
-        }
-        video,
-        canvas {
-          width: 100%;
-          height: auto;
-        }
-        #controls label {
-          display: block;
-          margin-top: 10px;
-        }
-        .sidebar-toggle-btn {
-          display: block;
-        }
-      }
-
-      @media (max-width: 480px) {
-        .nav-links a {
-          font-size: 1rem;
-        }
-        .logout-btn {
-          padding: 5px 10px;
-          font-size: 0.9rem;
-        }
-        h2,
-        h3 {
-          font-size: 1.2rem;
-        }
-        #capture,
-        #save {
-          padding: 10px;
-          font-size: 1rem;
-          width: 100%;
-        }
-      }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body>
-    <header>
-      <div class="nav-links">
-        <a href="/gallery" id="gallery-link">Gallery</a>
-        <a href="/camera" id="dashboard-link" class="active">Dashboard</a>
-        <a href="/settings" id="settings-link">Settings</a>
+  <body class="flex flex-col min-h-screen bg-gray-100">
+    <!-- Header -->
+    <header
+      class="bg-gray-900 text-white p-4 flex justify-between items-center"
+    >
+      <div class="flex space-x-6">
+        <a href="/gallery" class="hover:text-gray-300 transition">Gallery</a>
+        <a href="/camera" class="text-gray-300 font-semibold">Dashboard</a>
+        <a href="/settings" class="hover:text-gray-300 transition">Settings</a>
       </div>
-      <button class="logout-btn">Déconnexion</button>
+      <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">
+        Déconnexion
+      </button>
     </header>
 
-    <button class="sidebar-toggle-btn" id="toggleSidebar">☰</button>
+    <!-- Main content and sidebar -->
+    <div class="flex flex-1 flex-col md:flex-row overflow-hidden">
+      <!-- Main -->
+      <main class="flex-1 p-6 overflow-auto">
+        <h2 class="text-3xl font-bold mb-6 text-gray-800">
+          Capture de Photo avec la Webcam
+        </h2>
 
-    <main>
-      <h2>Capture de Photo avec la Webcam</h2>
-      <video id="video" width="640" height="480" autoplay></video>
-      <button id="capture">Capturer la photo</button>
-      <canvas id="canvas" width="640" height="480"></canvas>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Vidéo -->
+          <div class="flex flex-col items-center space-y-4">
+            <video id="video" class="w-full rounded shadow-lg" autoplay></video>
+            <button
+              id="capture"
+              class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors"
+            >
+              Capturer la photo
+            </button>
+          </div>
 
-      <h3>Choisir un calque :</h3>
-      <select id="frame-select">
-        <option value="">Aucun calque</option>
-        <!-- Les calques seront chargés ici -->
-      </select>
+          <!-- Contrôles -->
+          <div class="space-y-4">
+            <h3 class="text-xl font-semibold mb-2 text-gray-800">
+              Choisir un calque :
+            </h3>
+            <select
+              id="frame-select"
+              class="border border-gray-300 rounded px-4 py-2 w-full"
+            >
+              <option value="">Aucun calque</option>
+            </select>
 
-      <!-- Nouveau bouton pour uploader une image -->
-      <h3>Ou importer une image depuis votre PC :</h3>
-      <input type="file" id="image-upload" accept="image/png, image/jpeg" />
+            <h3 class="text-xl font-semibold mt-4 mb-2 text-gray-800">
+              Ou importer une image depuis votre PC :
+            </h3>
+            <input
+              type="file"
+              id="image-upload"
+              accept="image/png, image/jpeg"
+              class="w-full"
+            />
 
-      <div id="controls">
-        <h3>Contrôles du filtre :</h3>
-        <label>Position X :</label>
-        <input type="range" id="posX" min="0" max="640" value="0" />
-        <label>Position Y :</label>
-        <input type="range" id="posY" min="0" max="480" value="0" />
-        <label>Taille :</label>
-        <input type="range" id="size" min="100" max="640" value="640" />
-      </div>
+            <h3 class="text-xl font-semibold mt-4 mb-2 text-gray-800">
+              Contrôles du filtre :
+            </h3>
+            <div class="space-y-4">
+              <div class="flex items-center">
+                <label class="w-32 text-gray-700">Position X :</label>
+                <input
+                  type="range"
+                  id="posX"
+                  min="0"
+                  max="640"
+                  value="0"
+                  class="flex-1"
+                />
+              </div>
+              <div class="flex items-center">
+                <label class="w-32 text-gray-700">Position Y :</label>
+                <input
+                  type="range"
+                  id="posY"
+                  min="0"
+                  max="480"
+                  value="0"
+                  class="flex-1"
+                />
+              </div>
+              <div class="flex items-center">
+                <label class="w-32 text-gray-700">Taille :</label>
+                <input
+                  type="range"
+                  id="size"
+                  min="100"
+                  max="640"
+                  value="640"
+                  class="flex-1"
+                />
+              </div>
+            </div>
+            <button
+              id="save"
+              class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled
+            >
+              Sauvegarder la photo
+            </button>
+          </div>
 
-      <button id="save" disabled>Sauvegarder la photo</button>
-    </main>
+          <!-- Canvas -->
+          <div class="flex flex-col items-center space-y-4">
+            <canvas id="canvas" class="w-full rounded shadow-lg"></canvas>
+          </div>
+        </div>
+      </main>
 
-    <aside id="sidebar">
-      <h2>Images enregistrées</h2>
-      <div id="image-list"></div>
-    </aside>
+      <!-- Sidebar -->
+      <aside
+        class="w-full md:w-80 bg-white p-6 border-t md:border-t-0 md:border-l border-gray-200 overflow-y-auto"
+      >
+        <h2 class="text-2xl font-bold mb-6 text-gray-800">
+          Images enregistrées
+        </h2>
+        <div id="image-list" class="space-y-6">
+          <!-- Exemple d'image avec boutons en colonne -->
+          <div class="flex items-start space-x-4">
+            <img
+              src="/path/to/image.jpg"
+              class="w-24 h-24 rounded shadow"
+              alt="Image enregistrée"
+            />
+            <div class="flex flex-col space-y-2">
+              <button
+                class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs rounded w-20"
+              >
+                Modifier
+              </button>
+              <button
+                class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 text-xs rounded w-20"
+              >
+                Exporter
+              </button>
+              <button
+                class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 text-xs rounded w-20"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+          <!-- Ajoute ici d'autres images si nécessaire -->
+        </div>
+      </aside>
+    </div>
 
-    <footer>
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white text-center p-4 mt-auto">
       <p>Camagru © 2024</p>
     </footer>
 
+    <!-- JavaScript code -->
     <script>
       const video = document.getElementById("video");
       const canvas = document.getElementById("canvas");
@@ -240,18 +175,31 @@
       const imageList = document.getElementById("image-list");
       const imageUpload = document.getElementById("image-upload");
       const sidebar = document.getElementById("sidebar");
-      const toggleSidebarButton = document.getElementById("toggleSidebar");
 
       let capturedImage = null;
       let uploadedImage = null;
 
-      // Fonction pour obtenir le token CSRF
       function getCsrfToken() {
         return fetch("/auth/csrf-token", {
           credentials: "include", // Inclure les cookies dans la requête
         })
-          .then((res) => res.json())
-          .then((data) => data.csrfToken);
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("Échec de l'obtention du token CSRF");
+            }
+            return res.json();
+          })
+          .then((data) => data.csrfToken)
+          .catch((error) => {
+            console.error(
+              "Erreur lors de la récupération du token CSRF:",
+              error
+            );
+            alert(
+              "Erreur lors de la récupération du token CSRF. Veuillez réessayer plus tard."
+            );
+            throw error; // Propager l'erreur pour qu'elle puisse être gérée ailleurs si nécessaire
+          });
       }
       // Fonction pour échapper les caractères spéciaux
       function escapeHTML(str) {
@@ -262,22 +210,6 @@
           .replace(/"/g, "&quot;")
           .replace(/'/g, "&#039;");
       }
-
-      // Sidebar toggle functionality
-      toggleSidebarButton.addEventListener("click", () => {
-        if (sidebar.style.transform === "translateX(0%)") {
-          sidebar.style.transform = "translateX(100%)";
-        } else {
-          sidebar.style.transform = "translateX(0%)";
-        }
-      });
-
-      // Rendre la sidebar visible à nouveau lorsqu'on repasse sur un grand écran
-      window.addEventListener("resize", () => {
-        if (window.innerWidth > 768) {
-          sidebar.style.transform = "translateX(0%)"; // Forcer la réapparition sur grand écran
-        }
-      });
 
       // Charger dynamiquement les frames depuis le serveur
       window.addEventListener("load", function () {
@@ -310,6 +242,10 @@
 
       // Capturer l'image via la webcam
       captureButton.addEventListener("click", () => {
+        // Définir les dimensions du canvas en fonction de la vidéo
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         capturedImage = context.getImageData(0, 0, canvas.width, canvas.height);
         uploadedImage = null; // Annuler l'image uploadée si une photo est prise
@@ -330,6 +266,8 @@
           context.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
         } else if (capturedImage) {
           context.putImageData(capturedImage, 0, 0);
+        } else {
+          return; // Si aucune image, ne rien faire
         }
 
         const selectedFrame = frameSelect.value;
@@ -355,6 +293,10 @@
           uploadedImage.src = event.target.result;
 
           uploadedImage.onload = function () {
+            // Définir les dimensions du canvas en fonction de l'image uploadée
+            canvas.width = uploadedImage.width;
+            canvas.height = uploadedImage.height;
+
             context.clearRect(0, 0, canvas.width, canvas.height);
             context.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
             capturedImage = null; // Désactiver l'image capturée par la webcam si une image est uploadée
@@ -407,36 +349,78 @@
             imageList.innerHTML = "";
             data.forEach((image) => {
               const imgContainer = document.createElement("div");
+              imgContainer.classList.add("flex", "items-start", "space-x-4");
+
               const img = document.createElement("img");
               img.src = escapeHTML(image.image_path);
-              img.width = 200;
+              img.classList.add("w-24", "h-24", "object-cover", "rounded"); // Ajustement ici : agrandissement de l'image
+
+              const btnGroup = document.createElement("div");
+              btnGroup.classList.add("flex", "flex-col", "space-y-2");
 
               const deleteButton = document.createElement("button");
-              deleteButton.classList.add("delete-btn");
+              deleteButton.classList.add(
+                "bg-red-500",
+                "hover:bg-red-600",
+                "text-white",
+                "px-2",
+                "py-1",
+                "rounded",
+                "text-sm",
+                "transition-colors",
+                "duration-200",
+                "w-20"
+              );
               deleteButton.textContent = "Supprimer";
 
               const exportButton = document.createElement("button");
-              exportButton.textContent = "Exporter en PNG";
-              exportButton.style.marginLeft = "10px";
-              exportButton.addEventListener("click", () => {
-                exportImage(image.image_path);
-              });
+              exportButton.classList.add(
+                "bg-blue-500",
+                "hover:bg-blue-600",
+                "text-white",
+                "px-2",
+                "py-1",
+                "rounded",
+                "text-sm",
+                "transition-colors",
+                "duration-200",
+                "w-20"
+              );
+              exportButton.textContent = "Exporter";
 
               const editButton = document.createElement("button");
+              editButton.classList.add(
+                "bg-green-500",
+                "hover:bg-green-600",
+                "text-white",
+                "px-2",
+                "py-1",
+                "rounded",
+                "text-sm",
+                "transition-colors",
+                "duration-200",
+                "w-20"
+              );
               editButton.textContent = "Modifier";
-              editButton.style.marginLeft = "10px";
-              editButton.addEventListener("click", () => {
-                editImage(image.image_path);
-              });
 
               deleteButton.addEventListener("click", () => {
                 deleteImage(image.id);
               });
 
+              exportButton.addEventListener("click", () => {
+                exportImage(image.image_path);
+              });
+
+              editButton.addEventListener("click", () => {
+                editImage(image.image_path);
+              });
+
+              btnGroup.appendChild(editButton);
+              btnGroup.appendChild(exportButton);
+              btnGroup.appendChild(deleteButton);
+
               imgContainer.appendChild(img);
-              imgContainer.appendChild(deleteButton);
-              imgContainer.appendChild(exportButton);
-              imgContainer.appendChild(editButton);
+              imgContainer.appendChild(btnGroup);
               imageList.appendChild(imgContainer);
             });
           })
@@ -463,6 +447,10 @@
         const img = new Image();
         img.src = escapeHTML(imagePath);
         img.onload = () => {
+          // Définir les dimensions du canvas en fonction de l'image à éditer
+          canvas.width = img.width;
+          canvas.height = img.height;
+
           context.clearRect(0, 0, canvas.width, canvas.height); // Effacer le canvas actuel
           context.drawImage(img, 0, 0, canvas.width, canvas.height); // Dessiner l'image sur le canvas
           capturedImage = context.getImageData(
@@ -548,6 +536,5 @@
 
       window.onload = loadUserImages;
     </script>
-    <script src="logout.js"></script>
   </body>
 </html>
