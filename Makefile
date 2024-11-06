@@ -36,7 +36,8 @@ fclean:
 	docker volume prune -f
 	docker network prune -f
 	docker image prune -af
-	rm -rf ./src/uploads/*
+	find ./src/uploads/ -mindepth 1 -delete
+
 
 # Afficher les logs
 logs:
@@ -48,4 +49,5 @@ shell-app:
 
 # Accéder au conteneur MariaDB en ligne de commande
 shell-db:
-	$(DOCKER_COMPOSE) exec db bash
+	$(DOCKER_COMPOSE) exec db mysql -u root -p
+
