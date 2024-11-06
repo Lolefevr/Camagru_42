@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <link rel="icon" type="image/x-icon" href="/favicon_cam.ico" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Camagru - Authentification</title>
@@ -105,6 +106,7 @@
     </div>
 
     <script>
+
       // Fonction pour obtenir le token CSRF
       function getCsrfToken() {
         return fetch("/auth/csrf-token", {
@@ -112,6 +114,50 @@
         })
           .then((res) => res.json())
           .then((data) => data.csrfToken);
+
+      // Fonction de validation de mot de passe sécurisé
+      function validatePassword(password) {
+        const minLength = 12;
+        const upperCaseRegex = /[A-Z]/;
+        const lowerCaseRegex = /[a-z]/;
+        const numberRegex = /[0-9]/;
+        const specialCharRegex = /[!@#$%^&*(),.?":{}|<>]/;
+
+        if (password.length < minLength) {
+          return {
+            isValid: false,
+            message: `Le mot de passe doit contenir au moins ${minLength} caractères.`,
+          };
+        }
+        if (!upperCaseRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins une lettre majuscule.",
+          };
+        }
+        if (!lowerCaseRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins une lettre minuscule.",
+          };
+        }
+        if (!numberRegex.test(password)) {
+          return {
+            isValid: false,
+            message: "Le mot de passe doit contenir au moins un chiffre.",
+          };
+        }
+        if (!specialCharRegex.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins un caractère spécial.",
+          };
+        }
+        return { isValid: true, message: "" };
+
       }
 
       // Vérifier si l'utilisateur est déjà authentifié
@@ -148,8 +194,15 @@
           const email = document.getElementById("registerEmail").value;
           const username = document.getElementById("registerUsername").value;
           const password = document.getElementById("registerPassword").value;
-
           const csrfToken = await getCsrfToken(); // Récupérer le token CSRF
+
+          // Validation du mot de passe
+          const passwordValidation = validatePassword(password);
+          if (!passwordValidation.isValid) {
+            alert(passwordValidation.message);
+            return;
+          }
+
 
           fetch("/auth/register", {
             method: "POST",
