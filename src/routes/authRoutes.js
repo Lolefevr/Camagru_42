@@ -102,4 +102,11 @@ router.get("/csrf-token", csrfProtection, authController.getCsrfToken);
 // Route pour la réinitialisation du mot de passe (mot de passe oublié)
 router.post("/reset-password", csrfProtection, authController.resetPassword);
 
+// Route pour mettre à jour la préférence de notification
+// router.post(
+//   "/update-notification-preference",
+//   verifyToken,
+//   authController.updateNotificationPreference
+// );
+
 module.exports = router;

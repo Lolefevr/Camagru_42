@@ -720,18 +720,52 @@ exports.deleteImage = (req, res) => {
   const imageId = req.params.imageId;
   const userId = req.userId; // ID de l'utilisateur connecté
 
-  // Vérifier que l'image appartient à l'utilisateur avant de la supprimer
+  // Récupérer le chemin de l'image depuis la base de données avant la suppression
   db.query(
-    "DELETE FROM images WHERE id = ? AND user_id = ?",
+    "SELECT image_path FROM images WHERE id = ? AND user_id = ?",
     [imageId, userId],
     (err, result) => {
       if (err) {
-        console.error("Erreur lors de la suppression de l'image :", err);
+        console.error("Erreur lors de la récupération de l'image :", err);
         return res
           .status(500)
-          .send("Erreur lors de la suppression de l'image.");
+          .send("Erreur lors de la récupération de l'image.");
       }
-      res.status(200).send({ message: "Image supprimée avec succès" });
+
+      if (result.length === 0) {
+        return res.status(404).send({ message: "Image non trouvée." });
+      }
+
+      const filePath = path.join(__dirname, "..", result[0].image_path); // Chemin de l'image
+
+      // Supprimer l'image de la base de données
+      db.query(
+        "DELETE FROM images WHERE id = ? AND user_id = ?",
+        [imageId, userId],
+        (err, result) => {
+          if (err) {
+            console.error(
+              "Erreur lors de la suppression de l'image dans la base de données :",
+              err
+            );
+            return res
+              .status(500)
+              .send("Erreur lors de la suppression de l'image.");
+          }
+
+          // Supprimer le fichier image du dossier uploads
+          fs.unlink(filePath, (err) => {
+            if (err) {
+              console.error(
+                "Erreur lors de la suppression du fichier image :",
+                err
+              );
+              // L'erreur de suppression de fichier n'empêche pas la réponse de succès
+            }
+            res.status(200).send({ message: "Image supprimée avec succès" });
+          });
+        }
+      );
     }
   );
 };
@@ -845,4 +879,30 @@ exports.resetPassword = (req, res) => {
       );
     });
   });
+};
+
+// Fonction pour mettre à jour la préférence de notification par email
+exports.updateNotificationPreference = (req, res) => {
+  const { receiveEmailNotifications } = req.body;
+  const userId = req.userId; // ID de l'utilisateur connecté fourni par le middleware
+
+  db.query(
+    "UPDATE users SET receive_email_notifications = ? WHERE id = ?",
+    [receiveEmailNotifications ? 1 : 0, userId],
+    (err, result) => {
+      if (err) {
+        console.error(
+          "Erreur lors de la mise à jour de la préférence de notification :",
+          err
+        );
+        return res
+          .status(500)
+          .json({ success: false, message: "Erreur serveur." });
+      }
+      res.status(200).json({
+        success: true,
+        message: "Préférence de notification mise à jour avec succès.",
+      });
+    }
+  );
 };
