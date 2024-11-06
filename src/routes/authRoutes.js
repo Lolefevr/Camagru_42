@@ -109,4 +109,10 @@ router.post("/reset-password", csrfProtection, authController.resetPassword);
 //   authController.updateNotificationPreference
 // );
 
+router.post(
+  "/update-notification-preference",
+  verifyToken,
+  authController.updateNotificationPreference
+);
+
 module.exports = router;
